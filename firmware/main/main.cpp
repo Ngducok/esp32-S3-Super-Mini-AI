@@ -73,7 +73,7 @@ static void chatTask(void* pvParameters) {
                             printf("%s", tok_str);
                             fflush(stdout);
                         },
-                        48,   // Max tokens to generate
+                        Config::App::MAX_GENERATION_TOKENS, // Max tokens to generate (256)
                         0.0f, // Temperature (Greedy argmax for coherent English)
                         0.9f  // Top-P
                     );

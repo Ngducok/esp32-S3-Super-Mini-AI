@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "web_ui.h"
 #include "../llm/generator.h"
+#include "../config/app_config.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
@@ -99,7 +100,7 @@ static esp_err_t chat_post_handler(httpd_req_t* req) {
                 strcat(generated_text, tok_str);
             }
         },
-        48,    // max tokens
+        Config::App::MAX_GENERATION_TOKENS, // max tokens (256)
         0.0f,  // temperature (Greedy argmax for coherent English)
         0.9f   // top-p
     );

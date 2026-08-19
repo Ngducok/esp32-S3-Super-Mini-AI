@@ -7,7 +7,7 @@ namespace Config {
 namespace App {
 
     // Model runtime parameters
-    constexpr uint32_t MAX_GENERATION_TOKENS   = 48;
+    constexpr uint32_t MAX_GENERATION_TOKENS   = 256;
     constexpr float    DEFAULT_TEMPERATURE     = 0.0f; // Deterministic argmax
     constexpr float    DEFAULT_TOP_P           = 0.9f;
 
