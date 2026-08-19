@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-S3 Micro-LLM Generative AI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span>⚡ JARVIS (ESP32-S3)</span>
+            <span class="badge">100% On-Device AI</span>
+        </div>
+        <div class="stats-pill" id="chip-status">Telemetry Loading...</div>
+    </header>
+
+    <div id="chat-container">
+        <div class="msg bot">
+            <div class="bubble">Greetings sir! I am JARVIS, an autoregressive language model running 100% on-device on the ESP32-S3 microcontroller. How may I assist you today? 🤖</div>
+            <div class="meta"><span>Micro-Transformer INT8</span><span>Dual-Core 240MHz</span></div>
+        </div>
+    </div>
+
+    <div class="quick-chips">
+        <div class="chip" onclick="sendPrompt('Hello Jarvis')">👋 Hello Jarvis</div>
+        <div class="chip" onclick="sendPrompt('Tell me a story')">📖 Tell me a story</div>
+        <div class="chip" onclick="sendPrompt('Tell me a joke')">🎉 Tell me a joke</div>
+        <div class="chip" onclick="sendPrompt('How are you')">⚡ How are you</div>
+        <div class="chip" onclick="sendPrompt('Who are you')">🤖 Who are you</div>
+        <div class="chip" onclick="sendPrompt('System status')">📊 System Status</div>
+    </div>
+
+    <div class="input-bar">
+        <input type="text" id="msg-input" placeholder="Type prompt for AI generation..." autocomplete="off" onkeypress="if(event.key==='Enter') sendMessage()">
+        <button id="send-btn" onclick="sendMessage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </button>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

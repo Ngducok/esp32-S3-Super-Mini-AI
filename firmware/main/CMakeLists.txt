@@ -1,0 +1,37 @@
+idf_component_register(
+    SRCS 
+        "main.cpp"
+        "diagnostics/hardware_probe.cpp"
+        "diagnostics/memory_tracker.cpp"
+        "diagnostics/telemetry.cpp"
+        "llm/transformer.cpp"
+        "llm/sampler.cpp"
+        "llm/generator.cpp"
+        "web/wifi_ap.cpp"
+        "web/web_server.cpp"
+    INCLUDE_DIRS 
+        "."
+        "config"
+        "diagnostics"
+        "llm"
+        "web"
+        "../../web"
+    REQUIRES 
+        esp_timer
+        esp_hw_support
+        esp_system
+        spi_flash
+        driver
+        esp_driver_gpio
+        esp_driver_ledc
+        esp_driver_usb_serial_jtag
+        freertos
+        log
+        heap
+        vfs
+        esp_wifi
+        nvs_flash
+        esp_http_server
+        esp_netif
+        esp_event
+)
