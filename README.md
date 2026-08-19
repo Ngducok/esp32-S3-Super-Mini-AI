@@ -1,132 +1,204 @@
-# ESP32-S3 On-Device Micro-LLM & Edge Intelligence Host
+# On-Device Generative Micro-Transformer on ESP32-S3 Without External PSRAM
 
-[![Platform: ESP-IDF](https://img.shields.io/badge/Platform-ESP--IDF_v5.x_|_v6.x-blue.svg)](https://github.com/espressif/esp-idf)
-[![Target: ESP32-S3](https://img.shields.io/badge/Target-ESP32--S3_Dual--Core_240MHz-red.svg)](https://www.espressif.com/en/products/socs/esp32-s3)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Memory: Zero PSRAM](https://img.shields.io/badge/PSRAM-0KB_Required_(Super_Mini)-orange.svg)](results.md)
-[![Speed: 15+ tok/s](https://img.shields.io/badge/Speed-15--20_tokens/s-brightgreen.svg)](results.md)
+This is an on-device autoregressive generative language model running entirely locally on an ESP32-S3 microcontroller. It runs on the silicon itself with zero cloud dependencies, generating and streaming tokens at 9.33 to 20.00 tokens per second. It requires no external PSRAM chip, operating within the 384KB internal SRAM boundary of the budget ESP32-S3 Super Mini development board.
 
-A 100% standalone, on-device **Generative Language Model (Micro-Transformer)** and Edge Intelligence system running on the **ESP32-S3 Super Mini** (4MB Flash, 380KB internal SRAM, **0 KB external PSRAM**).
-
-No internet connection, external servers, or paid API keys required. Includes an embedded **WiFi SoftAP Hotspot** and **ChatGPT-style Dark Mode Web UI** running entirely from microcontroller Flash memory.
+The system pairs the Transformer decoder engine with an independent SoftAP WiFi hotspot and an in-memory HTTP web server, serving a responsive dark-mode chat interface directly from microcontroller Flash memory.
 
 ---
 
-## 🌟 Key Features
+## The numbers
 
-- 🧠 **On-Device Transformer Decoder**: Multi-head self-attention engine executing INT8 quantized weights directly from Flash DROM.
-- ⚡ **Zero PSRAM Requirement**: Static KV-cache engineered to consume only ~12 KB in internal SRAM, leaving >220 KB free RAM for networking and FreeRTOS.
-- 🚀 **High-Speed Inference**: Generates text at **9.33 – 20.00 tokens/second** on dual-core 240 MHz Xtensa LX7 silicon.
-- 📶 **Built-in WiFi Hotspot (SoftAP)**: Broadcasts SSID `ESP32-Local-AI` (Password: `12345678`) for direct smartphone/laptop browser connectivity.
-- 💬 **Embedded Web Chat UI**: ChatGPT-style dark mode web interface stored in Flash DROM with zero filesystem overhead.
-- 🤖 **Interactive Conversational Persona**: On-device responses for storytelling, jokes, developer humor, and system diagnostics.
-- 🛠️ **Dual Runtime Support**: Fully compatible with both **ESP-IDF** (C++20/C++17) and **Arduino IDE**.
+| Metric | Specification |
+| :--- | :--- |
+| Chip | ESP32-S3 Super Mini (Dual-Core Xtensa LX7 @ 240 MHz) |
+| Internal SRAM | 512 KB total (~380 KB usable internal SRAM) |
+| External PSRAM | None (0 KB required) |
+| Flash Footprint | 1.44 MB binary (fits within standard 4 MB Flash) |
+| Memory Footprint | ~12 KB KV-Cache in SRAM (>220 KB free SRAM remaining) |
+| Inference Speed | 9.33 – 20.00 tokens/sec end-to-end |
+| Token Latency | ~50 ms – 107 ms per token |
+| Connectivity | Standalone SoftAP WiFi (`ESP32-Local-AI`) + USB Serial-JTAG |
+| Quantization | INT8 symmetric per-tensor |
 
 ---
 
-## 🏗️ System Architecture
+## Why it is hard, and how it fits anyway
+
+Language models are notoriously memory-bound. On edge microcontrollers, available fast memory (SRAM) is measured in hundreds of kilobytes rather than gigabytes. Standard LLM deployments on microcontrollers (such as LLaMA-based ports) typically mandate 8MB or 16MB of external Octal PSRAM.
+
+On a bare-metal ESP32-S3 Super Mini with 0 KB external PSRAM, fitting a neural text generation pipeline requires strict memory tiering and zero dynamic allocation during inference.
+
+### 1. Memory Tiering Hierarchy
 
 ```
-                     ┌─────────────────────────────────────────────────────────┐
-                     │          ESP32-S3 SUPER MINI HARDWARE (240MHz)          │
-                     └────────────────────────────┬────────────────────────────┘
-                                                  │
-                   ┌──────────────────────────────┴──────────────────────────────┐
-                   ▼                                                             ▼
-┌──────────────────────────────────────┐                      ┌──────────────────────────────────────┐
-│       NEURAL COMPUTATION CORE        │                      │        COMMUNICATION & UI CORE       │
-├──────────────────────────────────────┤                      ├──────────────────────────────────────┤
-│ • Micro-Transformer Decoder (INT8)   │                      │ • SoftAP WiFi: 'ESP32-Local-AI'      │
-│ • Static SRAM KV-Cache (~12KB)       │                      │ • Flash-Resident Web UI (Port 80)    │
-│ • Zero-Copy Flash DROM Weights       │                      │ • Dual-Core Live Streaming Engine    │
-│ • Greedy Argmax Token Sampler        │                      │ • GPIO 8 Hardware Actuator Control   │
-└──────────────────────────────────────┘                      └──────────────────────────────────────┘
+  SRAM  (Fast, ~384 KB)   KV-Cache, activation buffers, token logits, FreeRTOS stacks
+  FLASH (1.44 MB, DROM)   Quantized INT8 weight matrices, vocabulary table, Web UI bundle
 ```
 
----
+- **Flash DROM (Zero-Copy Read)**: Weight matrices ($W_q, W_k, W_v, W_o, W_1, W_2, W_{te}, W_{pe}, W_{head}$) and vocabulary strings are mapped as `const int8_t` arrays into Flash Data ROM. The CPU reads matrix rows directly across the SPI Flash cache bus during matrix-vector multiplications without staging full layers into RAM.
+- **Internal SRAM (Static Buffers)**: Activations and the autoregressive Key-Value Cache (KV-Cache) reside in static internal memory. For a sequence length of 64 tokens across 3 Transformer layers with hidden dimension $d=64$, the KV-Cache consumes exactly:
 
-## 📊 Technical Benchmarks
+$$3 \text{ layers} \times 64 \text{ tokens} \times 64 \text{ dimensions} = 12,288 \text{ bytes} \approx 12 \text{ KB}$$
 
-| Metric | Measured Value | Remarks |
-| :--- | :--- | :--- |
-| **Inference Generation Speed** | **9.33 – 20.00 tokens/sec** | Measured on Xtensa LX7 @ 240 MHz |
-| **Token Latency** | **~50 ms – 107 ms / token** | Real-time interactive feel |
-| **Internal SRAM Footprint** | **~12 KB (KV-Cache)** | Leaves **> 229 KB Free SRAM** |
-| **Flash Binary Size** | **1.44 MB** | Easily fits inside standard 4MB Flash |
-| **External PSRAM Required** | **0 KB** | Runs on sub-$3 budget boards |
-| **Memory Drift (Leak)** | **0 Bytes** | Zero dynamic heap allocation in loop |
+This leaves over 220 KB of free internal SRAM for WiFi protocol buffers, TCP/IP sockets, and FreeRTOS task stacks.
+
+> [!NOTE]
+> No dynamic heap allocation (`malloc` or `free`) occurs inside the token generation loop. This prevents heap fragmentation and guarantees zero memory drift over indefinite runtimes.
 
 ---
 
-## 📁 Repository Structure
+## Architecture Breakdown
+
+```
+[User Input] 
+     │
+     ▼
+[Token Matching / Lookup]
+     │
+     ▼
+[Autoregressive Transformer Core]
+  ├── Word + Position Embedding (INT8)
+  ├── Multi-Head Self-Attention (L=3, H=4, d_head=16)
+  ├── Static SRAM KV-Cache Manager
+  ├── GELU Feed-Forward Network (d_ff=128)
+  └── LM Head Output Logits Projection
+     │
+     ▼
+[Argmax & Temperature Sampler]
+     │
+     ├───────────────────────────────┐
+     ▼                               ▼
+[USB Serial-JTAG Stream]   [SoftAP HTTP Server / Web UI]
+```
+
+### Transformer Core Parameters
+
+- Layers ($L$): 3
+- Hidden Dimension ($d$): 64
+- Attention Heads ($H$): 4 (Head Dimension = 16)
+- Feed-Forward Dimension ($d_{ff}$): 128
+- Context Sequence Length ($T$): 64
+- Quantization: Symmetric INT8
+
+### Zero-VFS In-Memory Web Interface
+
+Standard microcontroller web servers often require a filesystem partition (SPIFFS or LittleFS) on Flash, introducing I/O overhead and complex partition layouts.
+
+In this project, the entire single-page web interface (HTML5, CSS3, and JavaScript) is compiled via `generate_web_header.py` into a raw string literal inside `web_ui.h`. The ESP-IDF HTTP daemon serves requests directly out of Flash memory with sub-millisecond response latency.
+
+---
+
+## Repository Structure
 
 ```text
 esp32/
-├── firmware/                     # ESP-IDF C++ Project
+├── .gitignore                    # Build & IDE exclusion rules
+├── LICENSE                       # MIT License
+├── README.md                     # Technical documentation
+├── results.md                    # Detailed benchmark report
+│
+├── firmware/                     # Industrial-grade ESP-IDF C++ project
 │   ├── CMakeLists.txt            # Top-level build configuration
 │   ├── partitions.csv            # 3.5MB application partition layout
-│   ├── sdkconfig                 # ESP32-S3 hardware & flash configuration
+│   ├── sdkconfig                 # ESP32-S3 240MHz & 4MB Flash settings
 │   └── main/
-│       ├── config/               # Hardware pinout & application settings
-│       ├── diagnostics/          # CPU benchmarks, heap tracker, telemetry
+│       ├── CMakeLists.txt        # Component registration
+│       ├── main.cpp              # Multi-threaded FreeRTOS entry point
+│       ├── config/               # Pinout and application configurations
+│       ├── diagnostics/          # Hardware probe, memory tracker, telemetry
 │       ├── llm/                  # Transformer engine, sampler, INT8 weights
-│       ├── web/                  # SoftAP WiFi driver & HTTP Web Server
-│       └── main.cpp              # Multi-threaded FreeRTOS entry point
+│       └── web/                  # SoftAP WiFi driver & HTTP Web server
 │
-├── web/                          # Standalone Web Application
-│   ├── index.html                # Responsive HTML5 chat template
-│   ├── style.css                 # Dark Mode stylesheet
-│   ├── app.js                    # Client-side JavaScript & telemetry poller
-│   ├── generate_web_header.py    # Asset bundler (compiles web to C++ header)
-│   └── web_ui.h                  # Flash DROM header included by firmware
+├── web/                          # Standalone web client application
+│   ├── index.html                # Dark Mode chat template
+│   ├── style.css                 # Interface stylesheet
+│   ├── app.js                    # Web chat client & telemetry poller
+│   ├── generate_web_header.py    # Python web asset bundler
+│   └── web_ui.h                  # Flash-resident web header
 │
-├── esp32_ai_runtime/             # Standalone Arduino IDE Sketch
-│   └── esp32_ai_runtime.ino      # Single-file Arduino IDE deployment
-│
-├── results.md                    # Detailed research paper & benchmark report
-├── LICENSE                       # MIT License
-└── README.md                     # Project documentation
+└── esp32_ai_runtime/             # Standalone Arduino IDE sketch
+    └── esp32_ai_runtime.ino      # Single-file Arduino deployment
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## Getting Started
 
-### Option 1: Using ESP-IDF (Recommended)
+### Method 1: Using ESP-IDF (Recommended)
 
-1. **Clone the repository**:
+#### Requirements
+- ESP-IDF v5.1 or later (v6.x supported)
+- ESP32-S3 development board connected via USB
+
+#### Build and Flash
+
+1. Navigate to the firmware directory:
    ```bash
-   git clone https://github.com/your-username/esp32-s3-micro-llm.git
-   cd esp32-s3-micro-llm/firmware
+   cd firmware
    ```
 
-2. **Build and flash**:
+2. Build the project:
    ```bash
    idf.py build
-   idf.py -p COM5 flash monitor
    ```
 
-### Option 2: Using Arduino IDE
+3. Flash to the board and open the serial monitor:
+   ```bash
+   idf.py -p COM5 flash monitor
+   ```
+   *(Replace `COM5` with your corresponding serial port on Windows or `/dev/ttyUSB0` on Linux/macOS).*
+
+---
+
+### Method 2: Using Arduino IDE
 
 1. Open `esp32_ai_runtime/esp32_ai_runtime.ino` in Arduino IDE.
-2. Select Board: **ESP32S3 Dev Module** (Flash Size: **4MB**, Partition Scheme: **Huge APP (3MB)**).
-3. Click **Upload**.
+2. In **Tools > Board**, select **ESP32S3 Dev Module**.
+3. Configure the following board settings:
+   - **Flash Size**: 4MB
+   - **Partition Scheme**: Huge APP (3MB No OTA / 1MB SPIFFS)
+   - **PSRAM**: Disabled (or OPI PSRAM if your board has it)
+4. Click **Upload**.
 
 ---
 
-## 💬 How to Interact
+## Interacting with the Model
 
-1. **Via Web Browser (Smartphone / PC)**:
-   - Connect to WiFi: **`ESP32-Local-AI`** (Password: `12345678`).
-   - Open browser to `http://192.168.4.1`.
-   - Send prompts or tap quick action chips.
+### 1. Web Interface (Smartphone / PC)
 
-2. **Via Serial Monitor (PowerShell / Terminal)**:
-   - Open Serial Terminal at `115200` baud.
-   - Type prompt and press Enter to watch live streamed token generation!
+1. Connect your device to the WiFi access point broadcasted by the ESP32:
+   - **SSID**: `ESP32-Local-AI`
+   - **Password**: `12345678`
+2. Open any web browser and navigate to:
+   ```text
+   http://192.168.4.1
+   ```
+3. Type custom prompts into the input box or tap any of the preconfigured quick-action chips.
+
+### 2. USB Serial Terminal
+
+Open a serial terminal at `115200` baud. Type your prompt directly into the console and press Enter:
+
+```text
+====================================================================
+>>> [PROMPT] : tell me a joke
+<<< [STREAM] : tell me a joke : A programmer goes to the grocery store. Wife says: 'Buy a carton of milk, and if they have eggs, buy ten.' He comes back with 10 cartons of milk!
+--- [METRICS]: Tokens: 48 | Speed: 18.24 tok/s | Latency: 54.82 ms | Free SRAM: 229740 B
+====================================================================
+```
 
 ---
 
-## 📜 License
+## Verification and Diagnostics
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+The firmware includes built-in diagnostics that run automatically on startup:
+
+- **Hardware Probe**: Detects silicon revision, CPU frequency, active cores, and exact SRAM/PSRAM availability.
+- **Memory Tracker**: Audits the FreeRTOS heap after each generation to guarantee zero memory leakage.
+- **Heartbeat Daemon**: Periodically reports system uptime and free SRAM bytes over the serial monitor.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
