@@ -1,5 +1,13 @@
 # Micro-Transformer Inference Core
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `llm/` directory implements the on-device **Micro-Transformer Decoder** engine. It performs quantized fixed-point matrix-vector multiplication, static Key-Value (KV) cache management, Multi-Head Self-Attention, and deterministic token sampling.

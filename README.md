@@ -1,5 +1,13 @@
 # On-Device Generative Micro-Transformer on ESP32-S3 Without External PSRAM
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 This is an on-device autoregressive generative language model running entirely locally on an ESP32-S3 microcontroller. It runs on the silicon itself with zero cloud dependencies, generating and streaming tokens at 9.33 to 20.00 tokens per second. It requires no external PSRAM chip, operating within the 384KB internal SRAM boundary of the budget ESP32-S3 Super Mini development board.
 
 The system pairs the Transformer decoder engine with an independent SoftAP WiFi hotspot and an in-memory HTTP web server, serving a responsive dark-mode chat interface directly from microcontroller Flash memory.

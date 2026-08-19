@@ -1,5 +1,13 @@
 # SoftAP WiFi & Web Server Subsystem
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `web/` directory manages the standalone wireless access point (SoftAP) and the embedded HTTP daemon. It handles client browser connections, serves the in-memory web chat interface, and routes REST API requests to the generative language model engine.

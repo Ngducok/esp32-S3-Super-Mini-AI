@@ -1,5 +1,13 @@
 # ESP-IDF Firmware Subsystem
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `firmware/` directory contains the core industrial C++ ESP-IDF project for the ESP32-S3 microcontroller. It orchestrates the multi-threaded execution of the Micro-Transformer language model, FreeRTOS task scheduling, standalone SoftAP WiFi networking, HTTP web server daemon, and memory telemetry.

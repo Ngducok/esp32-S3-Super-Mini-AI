@@ -1,5 +1,13 @@
 # Arduino IDE Standalone Deployment
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `esp32_ai_runtime/` directory provides a self-contained, single-file Arduino sketch (`esp32_ai_runtime.ino`) for developers and makers who prefer using the Arduino IDE over the ESP-IDF toolchain.

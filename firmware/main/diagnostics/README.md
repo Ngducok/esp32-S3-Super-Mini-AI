@@ -1,5 +1,13 @@
 # System Diagnostics, Hardware Probing & Memory Tracking
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `diagnostics/` directory provides hardware introspection, real-time memory leak auditing, CPU performance benchmarking, and structured telemetry logging.

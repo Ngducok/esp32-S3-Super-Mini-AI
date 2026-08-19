@@ -1,5 +1,13 @@
 # Standalone Web Application & Asset Bundler
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `web/` directory contains the source code for the embedded ChatGPT-style dark mode web interface and the automated asset compiler that packages HTML, CSS, and JavaScript into a Flash-resident C++ header.

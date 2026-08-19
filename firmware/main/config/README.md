@@ -1,5 +1,13 @@
 # System Configuration Subsystem
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `config/` directory defines compile-time hardware pin mappings, FreeRTOS task priorities, stack size boundaries, and operational runtime thresholds.

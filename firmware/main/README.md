@@ -1,5 +1,13 @@
 # Main Application Component (ESP-IDF)
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="README.md">English</a> | 
+  <a href="README_VN.md">Tiếng Việt</a>
+</p>
+
+---
+
 ## Overview
 
 The `firmware/main/` directory contains the core application entry point and component subsystems that run on the ESP32-S3 microcontroller. It bridges hardware initialization, dual-core task orchestration, neural network computation, and web serving.

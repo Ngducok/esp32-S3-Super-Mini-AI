@@ -1,5 +1,11 @@
 # Technical Report: On-Device Generative Micro-Transformer (Nano-LLM) on ESP32-S3
 
+<p align="left">
+  <b>Language:</b> 
+  <a href="results.md">English</a> | 
+  <a href="results_VN.md">Tiếng Việt</a>
+</p>
+
 ---
 
 ## 1. Executive Summary
