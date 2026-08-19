@@ -220,6 +220,45 @@ Mọi đóng góp, báo lỗi (bug report), và đề xuất tính năng mới �
 
 ---
 
+## Động Lực Nghiên Cứu & Bối Cảnh Học Thuật
+
+Dự án này được phát triển như một đề tài nghiên cứu kỹ thuật độc lập bậc đại học. Mục tiêu trọng tâm là khám phá các giới hạn vật lý và kiến trúc khi thực thi các mô hình ngôn ngữ tự hồi quy (Transformer) trên vi điều khiển bare-metal siêu tiết kiệm chi phí ($2 không có PSRAM ngoài), thu hẹp khoảng cách giữa lý thuyết Deep Learning hiện đại và tối ưu hóa hệ thống nhúng mức thấp.
+
+---
+
+## Thông Tin Tác Giả & Liên Hệ
+
+- **Tác giả**: Duc Nguyen (Nguyễn Đức)
+- **Vai trò**: Sinh viên Kỹ thuật (Undergraduate Engineering Student)
+- **GitHub**: [@Ngducok](https://github.com/Ngducok)
+- **Kho chứa (Repository)**: [https://github.com/Ngducok/esp32-S3-Super-Mini-AI](https://github.com/Ngducok/esp32-S3-Super-Mini-AI)
+
+---
+
+## Trích Dẫn Học Thuật (Citation)
+
+Nếu bạn sử dụng dự án này trong các nghiên cứu, khóa luận tốt nghiệp, đồ án môn học hoặc bài báo khoa học, vui lòng trích dẫn theo định dạng:
+
+```bibtex
+@misc{esp32s3_micro_llm_2026,
+  author = {Nguyen, Duc},
+  title = {On-Device Generative Micro-Transformer on ESP32-S3 Without External PSRAM},
+  year = {2026},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/Ngducok/esp32-S3-Super-Mini-AI}}
+}
+```
+
+---
+
+## Lời Cảm Ơn (Acknowledgements)
+
+- Lấy cảm hứng từ triết lý phân tầng bộ nhớ trong dự án [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) và nghiên cứu Per-Layer Embeddings từ Google [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n).
+- Xây dựng trên nền tảng framework [Espressif ESP-IDF](https://github.com/espressif/esp-idf) và hệ điều hành thời gian thực FreeRTOS.
+
+---
+
 ## Giấy phép nguồn mở
 
 Dự án được phát hành theo giấy phép [MIT License](LICENSE).

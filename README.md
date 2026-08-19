@@ -249,6 +249,45 @@ For major architectural changes or model modifications, please open an Issue fir
 
 ---
 
+## Academic & Research Motivation
+
+This project was developed as an independent undergraduate engineering research initiative. The primary objective is to investigate the physical and architectural boundaries of executing autoregressive transformer models on ultra-constrained edge silicon ($2 bare-metal microcontrollers with 0 KB external PSRAM), bridging theoretical deep learning paradigms with low-level embedded systems optimization.
+
+---
+
+## Author & Contact
+
+- **Author**: Duc Nguyen
+- **Role**: Undergraduate Engineering Student
+- **GitHub**: [@Ngducok](https://github.com/Ngducok)
+- **Repository**: [https://github.com/Ngducok/esp32-S3-Super-Mini-AI](https://github.com/Ngducok/esp32-S3-Super-Mini-AI)
+
+---
+
+## Citation
+
+If you find this project useful in your research, academic coursework, or engineering projects, please consider citing it:
+
+```bibtex
+@misc{esp32s3_micro_llm_2026,
+  author = {Nguyen, Duc},
+  title = {On-Device Generative Micro-Transformer on ESP32-S3 Without External PSRAM},
+  year = {2026},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/Ngducok/esp32-S3-Super-Mini-AI}}
+}
+```
+
+---
+
+## Acknowledgements
+
+- Inspired by the memory tiering concepts demonstrated in [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) and Google's [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n) Per-Layer Embeddings research.
+- Built with the [Espressif ESP-IDF](https://github.com/espressif/esp-idf) framework and FreeRTOS.
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
