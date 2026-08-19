@@ -235,27 +235,13 @@ Dự án này được phát triển như một đề tài nghiên cứu kỹ th
 
 ---
 
-## Trích Dẫn Học Thuật (Citation)
-
-Nếu bạn sử dụng dự án này trong các nghiên cứu, khóa luận tốt nghiệp, đồ án môn học hoặc bài báo khoa học, vui lòng trích dẫn theo định dạng:
-
-```bibtex
-@misc{esp32s3_micro_llm_2026,
-  author = {Nguyen, Duc},
-  title = {On-Device Generative Micro-Transformer on ESP32-S3 Without External PSRAM},
-  year = {2026},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/Ngducok/esp32-S3-Super-Mini-AI}}
-}
-```
-
----
-
 ## Lời Cảm Ơn (Acknowledgements)
 
-- Lấy cảm hứng từ triết lý phân tầng bộ nhớ trong dự án [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) và nghiên cứu Per-Layer Embeddings từ Google [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n).
-- Xây dựng trên nền tảng framework [Espressif ESP-IDF](https://github.com/espressif/esp-idf) và hệ điều hành thời gian thực FreeRTOS.
+Xin chân thành gửi lời cảm ơn đến cộng đồng nguồn mở đã chia sẻ các nghiên cứu và công cụ kỹ thuật hữu ích:
+
+- Dự án [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) đã tiên phong mở ra hướng tiếp cận phân tầng bộ nhớ cho mô hình ngôn ngữ trên ESP32-S3.
+- Đội ngũ kỹ sư [Espressif Systems](https://github.com/espressif) với framework ESP-IDF mạnh mẽ và nhân hệ điều hành thời gian thực FreeRTOS.
+- Cộng đồng nghiên cứu TinyML và Edge AI quốc tế đã liên tục thúc đẩy các giới hạn tính toán mạng nơ-ron trên vi điều khiển.
 
 ---
 

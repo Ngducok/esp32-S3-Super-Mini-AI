@@ -264,27 +264,13 @@ This project was developed as an independent undergraduate engineering research 
 
 ---
 
-## Citation
-
-If you find this project useful in your research, academic coursework, or engineering projects, please consider citing it:
-
-```bibtex
-@misc{esp32s3_micro_llm_2026,
-  author = {Nguyen, Duc},
-  title = {On-Device Generative Micro-Transformer on ESP32-S3 Without External PSRAM},
-  year = {2026},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/Ngducok/esp32-S3-Super-Mini-AI}}
-}
-```
-
----
-
 ## Acknowledgements
 
-- Inspired by the memory tiering concepts demonstrated in [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) and Google's [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n) Per-Layer Embeddings research.
-- Built with the [Espressif ESP-IDF](https://github.com/espressif/esp-idf) framework and FreeRTOS.
+Special thanks to the open-source community whose work and shared insights made this project possible:
+
+- [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai) for pioneering the concept of on-device LLM memory tiering on the ESP32-S3.
+- [Espressif Systems](https://github.com/espressif) for maintaining the robust ESP-IDF framework and FreeRTOS integration.
+- The open-source TinyML and Edge AI research community for pushing the boundaries of neural network inference on microcontrollers.
 
 ---
 
