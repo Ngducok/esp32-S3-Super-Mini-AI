@@ -261,6 +261,7 @@ The long-term research vision is to integrate physical audio frontend peripheral
 
 - **Author**: Duc Nguyen
 - **Role**: 3rd-year Undergraduate Student in Robotics & AI, 3I Institute, UEH University
+- **Email**: [dustinoki.dev@gmail.com](mailto:dustinoki.dev@gmail.com)
 
 > [!NOTE]
 > As an undergraduate student, my knowledge and practical experience are still growing. I warmly welcome any constructive feedback, technical guidance, architectural suggestions, or code contributions from the community to help improve this project.

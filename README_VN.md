@@ -232,6 +232,7 @@ Tầm nhìn nghiên cứu dài hạn là tích hợp các ngoại vi xử lý â
 
 - **Tác giả**: Duc Nguyen (Nguyễn Đức)
 - **Vai trò**: Sinh viên năm 3 ngành Robotics & AI (Undergraduate), Viện 3I, Đại học UEH
+- **Email**: [dustinoki.dev@gmail.com](mailto:dustinoki.dev@gmail.com)
 
 > [!NOTE]
 > Là một sinh viên, kiến thức lý thuyết và kinh nghiệm thực chiến của mình vẫn còn đang trong quá trình tích lũy và học hỏi. Mình rất mong nhận được những góp ý xây dựng, định hướng kỹ thuật, lời khuyên và sự giúp đỡ từ các thầy cô, các anh chị kỹ sư và các bạn trong cộng đồng để dự án ngày càng hoàn thiện hơn.
