@@ -39,13 +39,21 @@ Trong khi `slvDev/esp32-ai` hướng đến các module ESP32-S3 cao cấp trang
 | :--- | :--- |
 | Vi điều khiển | ESP32-S3 Super Mini (2 nhân Xtensa LX7 @ 240 MHz) |
 | SRAM nội bộ | Tổng 512 KB (~380 KB SRAM khả dụng) |
-| PSRAM ngoài | Không yêu cầu (0 KB PSRAM) |
+| PSRAM ngoài | **Tắt / 0 KB Yêu Cầu** (Chạy trên mọi biến thể phần cứng) |
 | Kích thước Flash | Nhị phân 1.44 MB (nằm trong Flash chuẩn 4 MB) |
 | Tiêu thụ RAM | ~12 KB KV-Cache trong SRAM (còn trống >220 KB SRAM) |
 | Tốc độ sinh chữ | 9.33 – 20.00 token/giây |
 | Độ trễ mỗi token | ~50 ms – 107 ms / token |
 | Kết nối | WiFi SoftAP độc lập (`ESP32-Local-AI`) + USB Serial-JTAG |
 | Lượng tử hóa | INT8 đối xứng theo tensor |
+
+> [!NOTE]
+> **Vì Sao Thiết Kế Không Cần PSRAM? (Dù một số chip có sẵn 2MB PSRAM)**:
+> Mặc dù một số dòng chip ESP32-S3 (như ESP32-S3R2) có tích hợp sẵn 2MB PSRAM, rất nhiều bo mạch giá rẻ phổ biến trên thị trường (như ESP32-S3-N4) **hoàn toàn không có PSRAM (0 KB PSRAM)**.
+> 
+> 1. **Tính Tương Thích Phổ Quát 100%**: Việc giới hạn tài nguyên chạy trọn vẹn trong SRAM nội bộ giúp firmware này chạy được trên **bất kỳ** bo mạch ESP32-S3 nào trên thế giới mà không kén phần cứng.
+> 2. **Tốc Độ SRAM Siêu Nhanh (Single-Cycle ~960 MB/s)**: SRAM nội bộ giao tiếp trực tiếp với 2 nhân CPU ở xung nhịp 240 MHz, nhanh hơn rất nhiều so với PSRAM ngoài chạy qua bus SPI (40–80 MHz) vốn dễ bị trễ và tranh chấp bus.
+> 3. **Tùy Chọn Mở Rộng Linh Hoạt**: Người dùng có bo mạch 2MB/8MB PSRAM có thể dễ dàng bật `CONFIG_SPIRAM=y` trong `sdkconfig` để mở rộng ngữ cảnh lên 512+ tokens.
 
 ---
 

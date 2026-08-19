@@ -39,13 +39,21 @@ While `slvDev/esp32-ai` targets larger ESP32-S3 modules equipped with 8MB Octal 
 | :--- | :--- |
 | Chip | ESP32-S3 Super Mini (Dual-Core Xtensa LX7 @ 240 MHz) |
 | Internal SRAM | 512 KB total (~380 KB usable internal SRAM) |
-| External PSRAM | None (0 KB required) |
+| External PSRAM | **Disabled / 0 KB Required** (Runs on all board variants) |
 | Flash Footprint | 1.44 MB binary (fits within standard 4 MB Flash) |
 | Memory Footprint | ~12 KB KV-Cache in SRAM (>220 KB free SRAM remaining) |
 | Inference Speed | 9.33 – 20.00 tokens/sec end-to-end |
 | Token Latency | ~50 ms – 107 ms per token |
 | Connectivity | Standalone SoftAP WiFi (`ESP32-Local-AI`) + USB Serial-JTAG |
 | Quantization | INT8 symmetric per-tensor |
+
+> [!NOTE]
+> **Why 0 KB PSRAM by Design? (Even if your board has 2MB PSRAM)**:
+> While some ESP32-S3 chip variants (like ESP32-S3R2) feature 2MB embedded PSRAM, many entry-level boards (like ESP32-S3-N4) have **0 KB PSRAM**. 
+> 
+> 1. **Universal Hardware Compatibility**: By restricting memory consumption to internal SRAM, this firmware runs out-of-the-box on **any** ESP32-S3 development board ($2 bare-metal silicon).
+> 2. **SRAM Single-Cycle Speed**: Internal SRAM runs at full 240 MHz CPU bus speed (~960 MB/s single-cycle access), whereas PSRAM traverses an external SPI bus (40–80 MHz) with bus contention and latency penalties.
+> 3. **Optional Expansion**: Users with 2MB/8MB PSRAM can easily toggle `CONFIG_SPIRAM=y` in `sdkconfig` to scale context length to 512+ tokens.
 
 ---
 
