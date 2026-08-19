@@ -262,6 +262,9 @@ This project was developed as an independent undergraduate engineering research 
 - **GitHub**: [@Ngducok](https://github.com/Ngducok)
 - **Repository**: [https://github.com/Ngducok/esp32-S3-Super-Mini-AI](https://github.com/Ngducok/esp32-S3-Super-Mini-AI)
 
+> [!NOTE]
+> As an undergraduate student, my knowledge and practical experience are still growing. I warmly welcome any constructive feedback, technical guidance, architectural suggestions, or code contributions from the community to help improve this project.
+
 ---
 
 ## Acknowledgements

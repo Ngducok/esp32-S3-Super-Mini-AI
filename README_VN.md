@@ -233,6 +233,9 @@ Dự án này được phát triển như một đề tài nghiên cứu kỹ th
 - **GitHub**: [@Ngducok](https://github.com/Ngducok)
 - **Kho chứa (Repository)**: [https://github.com/Ngducok/esp32-S3-Super-Mini-AI](https://github.com/Ngducok/esp32-S3-Super-Mini-AI)
 
+> [!NOTE]
+> Là một sinh viên, kiến thức lý thuyết và kinh nghiệm thực chiến của mình vẫn còn đang trong quá trình tích lũy và học hỏi. Mình rất mong nhận được những góp ý xây dựng, định hướng kỹ thuật, lời khuyên và sự giúp đỡ từ các thầy cô, các anh chị kỹ sư và các bạn trong cộng đồng để dự án ngày càng hoàn thiện hơn.
+
 ---
 
 ## Lời Cảm Ơn (Acknowledgements)
