@@ -8,7 +8,7 @@ namespace Web {
 class WebServer {
 public:
     static esp_err_t start();
-    static void stop();
+    static esp_err_t stop();
 
 private:
     static httpd_handle_t s_server_handle;

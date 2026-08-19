@@ -12,7 +12,7 @@ static const char* TAG = "WEB_SERVER";
 
 namespace Web {
 
-static httpd_handle_t s_server_handle = nullptr;
+httpd_handle_t WebServer::s_server_handle = nullptr;
 
 // ----------------------------------------------------------------------------
 // GET / Handler -> Serve Embedded ChatGPT Dark Mode Web UI
