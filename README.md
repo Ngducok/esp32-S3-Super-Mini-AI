@@ -8,13 +8,20 @@ The system pairs the Transformer decoder engine with an independent SoftAP WiFi 
 
 ## Inspiration and Relationship to slvDev/esp32-ai
 
-This project was inspired by the memory tiering philosophy demonstrated in [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai), which proved that large neural lookup tables can reside in Flash memory while the core computations execute on microcontroller silicon.
+This project was inspired by the memory tiering philosophy demonstrated in [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai), which showed how large embedding tables (such as Google's Per-Layer Embeddings from [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n)) can live in slow Flash memory while fast compute executes on microcontroller silicon.
 
-While `slvDev/esp32-ai` targets high-end ESP32-S3 modules equipped with 8MB Octal PSRAM and 16MB Flash driving a small physical SPI LCD screen, this project addresses a different constraint:
+While `slvDev/esp32-ai` targets larger ESP32-S3 modules equipped with 8MB Octal PSRAM and 16MB Flash to drive an external SPI LCD display, this project explores an alternative architectural challenge: **How far can we push on-device neural text generation on a minimal $2 development board with 0 KB external PSRAM and standard 4MB Flash?**
 
-1. **Zero External PSRAM**: The architecture is redesigned to operate strictly within the internal 384KB SRAM boundary of the budget ESP32-S3 Super Mini board (~$2 cost).
-2. **Concurrent Web & Hotspot Serving**: Instead of outputting solely to a SPI screen, the device runs a standalone SoftAP WiFi access point and hosts an in-memory ChatGPT-style web interface concurrently with live token generation.
-3. **Static KV-Cache Engineering**: Memory consumption during inference is locked to ~12 KB of internal SRAM, leaving over 220 KB free for the FreeRTOS network stack.
+### Architectural Comparison
+
+| Architectural Aspect | `slvDev/esp32-ai` | This Project (ESP32-S3 Micro-LLM) |
+| :--- | :--- | :--- |
+| **Inspiration Source** | Google Gemma 3n (Per-Layer Embeddings) | `slvDev/esp32-ai` & LLaMA Decoder Architecture |
+| **Target Hardware** | ESP32-S3 N16R8 (16MB Flash / 8MB PSRAM) | ESP32-S3 Super Mini (4MB Flash / **0 KB PSRAM**) |
+| **Memory Allocation** | Relies on 8MB Octal PSRAM for KV/weights | **100% Internal SRAM only** (~12 KB KV-Cache) |
+| **Output Interface** | SPI LCD Screen wired to GPIOs | **SoftAP WiFi Hotspot + In-Memory Web Chat UI** |
+| **Serving Mechanism** | Local SPI frame buffer | Asynchronous HTTP REST API on Port 80 |
+| **Cost & Accessibility** | Higher-end module (~$5 - $7) | Ultra-budget module (~$2) |
 
 ---
 
