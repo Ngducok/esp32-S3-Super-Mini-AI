@@ -226,6 +226,29 @@ The firmware includes built-in diagnostics that run automatically on startup:
 
 ---
 
+## Contributing
+
+Contributions, bug reports, and feature proposals are welcome. If you would like to contribute to this project:
+
+1. **Fork the Repository**: Click the **Fork** button at the top right of this repository.
+2. **Create a Feature Branch**:
+   ```bash
+   git checkout -b feature/YourFeatureName
+   ```
+3. **Commit Your Changes**:
+   ```bash
+   git commit -m "feat: implement INT4 quantization or new feature"
+   ```
+4. **Push to Your Branch**:
+   ```bash
+   git push origin feature/YourFeatureName
+   ```
+5. **Open a Pull Request**: Submit a Pull Request to the `main` branch with a description of your changes and test verification results.
+
+For major architectural changes or model modifications, please open an Issue first to discuss what you would like to change. See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed contribution guidelines.
+
+---
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).

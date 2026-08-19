@@ -197,6 +197,29 @@ Mở Serial Monitor ở tốc độ Baud `115200`. Gõ nội dung và nhấn Ent
 
 ---
 
+## Đóng góp cho dự án (Contributing)
+
+Mọi đóng góp, báo lỗi (bug report), và đề xuất tính năng mới đều được hoan nghênh. Nếu bạn muốn đóng góp cho dự án:
+
+1. **Fork Kho Chứa**: Nhấn nút **Fork** ở góc trên bên phải của repository trên GitHub.
+2. **Tạo Nhánh Mới (Feature Branch)**:
+   ```bash
+   git checkout -b feature/TenTinhNangCuaBan
+   ```
+3. **Commit Các Thay Đổi**:
+   ```bash
+   git commit -m "feat: triển khai lượng tử hóa INT4 hoặc tính năng mới"
+   ```
+4. **Push Lên Nhánh Của Bạn**:
+   ```bash
+   git push origin feature/TenTinhNangCuaBan
+   ```
+5. **Tạo Pull Request (PR)**: Mở một Pull Request vào nhánh `main` kèm mô tả chi tiết các thay đổi và kết quả thử nghiệm trên phần cứng.
+
+Đối với các thay đổi lớn về kiến trúc hoặc cấu trúc mô hình, vui lòng tạo một Issue trước để thảo luận. Xem chi tiết tại [CONTRIBUTING_VN.md](CONTRIBUTING_VN.md).
+
+---
+
 ## Giấy phép nguồn mở
 
 Dự án được phát hành theo giấy phép [MIT License](LICENSE).
