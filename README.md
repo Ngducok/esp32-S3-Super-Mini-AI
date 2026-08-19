@@ -258,9 +258,7 @@ This project was developed as an independent undergraduate engineering research 
 ## Author & Contact
 
 - **Author**: Duc Nguyen
-- **Role**: Undergraduate Engineering Student
-- **GitHub**: [@Ngducok](https://github.com/Ngducok)
-- **Repository**: [https://github.com/Ngducok/esp32-S3-Super-Mini-AI](https://github.com/Ngducok/esp32-S3-Super-Mini-AI)
+- **Role**: Robotics and AI, 3I Institute, UEH University
 
 > [!NOTE]
 > As an undergraduate student, my knowledge and practical experience are still growing. I warmly welcome any constructive feedback, technical guidance, architectural suggestions, or code contributions from the community to help improve this project.
