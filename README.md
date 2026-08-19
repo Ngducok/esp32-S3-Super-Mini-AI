@@ -6,6 +6,18 @@ The system pairs the Transformer decoder engine with an independent SoftAP WiFi 
 
 ---
 
+## Inspiration and Relationship to slvDev/esp32-ai
+
+This project was inspired by the memory tiering philosophy demonstrated in [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai), which proved that large neural lookup tables can reside in Flash memory while the core computations execute on microcontroller silicon.
+
+While `slvDev/esp32-ai` targets high-end ESP32-S3 modules equipped with 8MB Octal PSRAM and 16MB Flash driving a small physical SPI LCD screen, this project addresses a different constraint:
+
+1. **Zero External PSRAM**: The architecture is redesigned to operate strictly within the internal 384KB SRAM boundary of the budget ESP32-S3 Super Mini board (~$2 cost).
+2. **Concurrent Web & Hotspot Serving**: Instead of outputting solely to a SPI screen, the device runs a standalone SoftAP WiFi access point and hosts an in-memory ChatGPT-style web interface concurrently with live token generation.
+3. **Static KV-Cache Engineering**: Memory consumption during inference is locked to ~12 KB of internal SRAM, leaving over 220 KB free for the FreeRTOS network stack.
+
+---
+
 ## The numbers
 
 | Metric | Specification |
