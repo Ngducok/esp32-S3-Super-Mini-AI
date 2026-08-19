@@ -24,3 +24,8 @@ env/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local private study notes (Do not upload to GitHub)
+KIENTHUC_HOC_TAP_DEEP_DIVE.md
+*_study_guide.md
+
