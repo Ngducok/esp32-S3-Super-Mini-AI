@@ -18,13 +18,52 @@ function appendMessage(sender, text, metaInfo) {
     return msgDiv;
 }
 
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;")
+              .replace(/'/g, "&#039;")
+              .replace(/\n/g, "<br>");
+}
+
+function streamBotReply(botMsgDiv, fullText, metaInfo, tokSec) {
+    const bubble = botMsgDiv.querySelector('.bubble');
+    bubble.innerHTML = '<span class="cursor"></span>';
+    
+    let currentIdx = 0;
+    // Cadence calculation based on measured tok/s
+    const charDelay = Math.max(14, Math.min(35, Math.floor(1000 / (tokSec * 3.5 || 50))));
+    
+    const timer = setInterval(() => {
+        if (currentIdx < fullText.length) {
+            currentIdx++;
+            bubble.innerHTML = escapeHtml(fullText.substring(0, currentIdx)) + '<span class="cursor"></span>';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        } else {
+            clearInterval(timer);
+            bubble.innerHTML = escapeHtml(fullText);
+            if (metaInfo) {
+                const metaDiv = document.createElement('div');
+                metaDiv.className = 'meta';
+                metaDiv.innerHTML = metaInfo;
+                botMsgDiv.appendChild(metaDiv);
+            }
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }, charDelay);
+}
+
 async function sendMessage() {
     const text = msgInput.value.trim();
     if (!text) return;
     
     msgInput.value = '';
-    appendMessage('user', text, '<span>User Prompt</span>');
+    appendMessage('user', escapeHtml(text), '<span>User Prompt</span>');
     sendBtn.disabled = true;
+
+    // Create bot bubble with blinking cursor
+    const botMsg = appendMessage('bot', '<span class="cursor"></span>');
 
     try {
         const response = await fetch('/api/chat', {
@@ -35,13 +74,18 @@ async function sendMessage() {
         
         const data = await response.json();
         const meta = `<span>⚡ ${(data.tokens_sec || 20).toFixed(1)} tok/s</span><span>⏱ ${(data.latency_us / 1000).toFixed(1)} ms</span><span>🧠 Micro-Transformer</span>`;
-        appendMessage('bot', data.reply, meta);
+        
+        streamBotReply(botMsg, data.reply, meta, data.tokens_sec || 20);
         
         if (data.free_sram) {
             chipStatus.innerText = `Free SRAM: ${(data.free_sram / 1024).toFixed(1)} KB`;
         }
     } catch (err) {
-        appendMessage('bot', 'Connection error to ESP32-S3. Please verify your WiFi hotspot connection!', '<span>Error</span>');
+        botMsg.querySelector('.bubble').innerText = 'Connection error to ESP32-S3. Please verify your WiFi connection!';
+        const errMeta = document.createElement('div');
+        errMeta.className = 'meta';
+        errMeta.innerHTML = '<span>Error</span>';
+        botMsg.appendChild(errMeta);
     } finally {
         sendBtn.disabled = false;
         msgInput.focus();
