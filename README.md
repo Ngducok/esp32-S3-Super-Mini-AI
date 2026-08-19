@@ -258,7 +258,7 @@ This project was developed as an independent undergraduate engineering research 
 ## Author & Contact
 
 - **Author**: Duc Nguyen
-- **Role**: Robotics and AI, 3I Institute, UEH University
+- **Role**: 3rd-year Undergraduate Student in Robotics & AI, 3I Institute, UEH University
 
 > [!NOTE]
 > As an undergraduate student, my knowledge and practical experience are still growing. I warmly welcome any constructive feedback, technical guidance, architectural suggestions, or code contributions from the community to help improve this project.

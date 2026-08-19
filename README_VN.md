@@ -229,7 +229,7 @@ Dự án này được phát triển như một đề tài nghiên cứu kỹ th
 ## Thông Tin Tác Giả & Liên Hệ
 
 - **Tác giả**: Duc Nguyen (Nguyễn Đức)
-- **Vai trò**: Robotics and AI, 3I Institute, UEH University
+- **Vai trò**: Sinh viên năm 3 ngành Robotics & AI (Undergraduate), Viện 3I, Đại học UEH
 
 > [!NOTE]
 > Là một sinh viên, kiến thức lý thuyết và kinh nghiệm thực chiến của mình vẫn còn đang trong quá trình tích lũy và học hỏi. Mình rất mong nhận được những góp ý xây dựng, định hướng kỹ thuật, lời khuyên và sự giúp đỡ từ các thầy cô, các anh chị kỹ sư và các bạn trong cộng đồng để dự án ngày càng hoàn thiện hơn.
