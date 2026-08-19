@@ -247,6 +247,10 @@ Xin chân thành gửi lời cảm ơn đến cộng đồng nguồn mở đã c
 - Đội ngũ kỹ sư [Espressif Systems](https://github.com/espressif) với framework ESP-IDF mạnh mẽ và nhân hệ điều hành thời gian thực FreeRTOS.
 - Cộng đồng nghiên cứu TinyML và Edge AI quốc tế đã liên tục thúc đẩy các giới hạn tính toán mạng nơ-ron trên vi điều khiển.
 
+## Lịch Sử Gắn Sao (Star History)
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Ngducok/esp32-S3-Super-Mini-AI&type=Date)](https://star-history.com/#Ngducok/esp32-S3-Super-Mini-AI&Date)
+
 ---
 
 ## Giấy phép nguồn mở
