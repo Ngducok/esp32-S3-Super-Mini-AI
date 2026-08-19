@@ -253,6 +253,8 @@ For major architectural changes or model modifications, please open an Issue fir
 
 This project was developed as an independent undergraduate engineering research initiative. The primary objective is to investigate the physical and architectural boundaries of executing autoregressive transformer models on ultra-constrained edge silicon ($2 bare-metal microcontrollers with 0 KB external PSRAM), bridging theoretical deep learning paradigms with low-level embedded systems optimization.
 
+The long-term research vision is to integrate physical audio frontend peripherals (I2S digital microphones and DAC amplifiers) and robotics actuator buses (I2C/SPI/CAN) to evolve this on-device language model into a 100% offline, physical "JARVIS" assistant module for embedded robotics and embodied AIoT systems.
+
 ---
 
 ## Author & Contact

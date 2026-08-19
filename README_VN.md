@@ -224,6 +224,8 @@ Mọi đóng góp, báo lỗi (bug report), và đề xuất tính năng mới �
 
 Dự án này được phát triển như một đề tài nghiên cứu kỹ thuật độc lập bậc đại học. Mục tiêu trọng tâm là khám phá các giới hạn vật lý và kiến trúc khi thực thi các mô hình ngôn ngữ tự hồi quy (Transformer) trên vi điều khiển bare-metal siêu tiết kiệm chi phí ($2 không có PSRAM ngoài), thu hẹp khoảng cách giữa lý thuyết Deep Learning hiện đại và tối ưu hóa hệ thống nhúng mức thấp.
 
+Tầm nhìn nghiên cứu dài hạn là tích hợp các ngoại vi xử lý âm thanh vật lý (Microphone I2S và Chip khuếch đại loa I2S) cùng các bus điều khiển cơ cấu chấp hành Robot (I2C/SPI/CAN), từng bước phát triển mô hình ngôn ngữ cục bộ này thành một module "Bộ não Trợ lý JARVIS" chạy 100% offline ngoài đời thực cho các hệ thống Robot thông minh và AIoT.
+
 ---
 
 ## Thông Tin Tác Giả & Liên Hệ

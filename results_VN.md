@@ -98,3 +98,6 @@ Bảng dưới đây trình bày các chỉ số đo đạc thực tế từ qu�
 1. **Đóng gói trọng số 4-bit (INT4 / 2-Bit Weight Packing)**: Nén nhiều tham số vào 1 byte để tăng dung lượng mô hình trên Flash 4MB.
 2. **Mô hình Attention tuyến tính (RWKV / Mamba-Micro)**: Chuyển sang mô hình trạng thái ẩn $O(1)$ RAM để đạt độ dài ngữ cảnh vô hạn với $< 2\text{ KB}$ SRAM.
 3. **Speculative Decoding trên 2 nhân CPU**: Thực hiện kiểm chứng token song song giữa 2 nhân Xtensa Core 0 và Core 1 để đạt tốc độ $> 35\text{ token/giây}$.
+4. **Tích Hợp Ngoại Vi Phần Cứng & Âm Thanh (Hiện Thực Hóa "JARVIS" Ngoài Đời Thực)**:
+   - **Xử lý âm thanh & Giọng nói**: Kết nối Microphone kỹ thuật số I2S (INMP441) để nhận diện từ khóa đánh thức (Wake-Word) và chip khuếch đại âm thanh I2S DAC (MAX98357A) để phát giọng nói trực tiếp từ chip.
+   - **Giao tiếp Robot & Cơ cấu chấp hành**: Kết nối với driver động cơ, servo và các bus cảm biến (I2C/SPI/CAN) để biến vi điều khiển Micro-LLM thành một module "Bộ não Robot JARVIS" chạy 100% offline cho các hệ thống Robotics và AIoT.

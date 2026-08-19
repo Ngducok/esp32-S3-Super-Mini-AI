@@ -98,6 +98,9 @@ The table below presents verified performance metrics obtained from direct silic
 1. **INT4 / 2-Bit Weight Packing**: Pack multiple parameters per byte to double model capacity on 4MB Flash.
 2. **Linear Attention / State-Space Models (RWKV / Mamba-Micro)**: Shift from quadratic attention to recurrent $O(1)$ memory models for infinite context length with $< 2\text{ KB}$ SRAM.
 3. **Speculative Decoding on Dual Cores**: Execute parallel token verification across Xtensa Core 0 and Core 1 to achieve $> 35\text{ tokens/second}$.
+4. **Physical Peripherals & Voice Integration (Toward a Real-Life Offline "JARVIS")**:
+   - **Acoustic Frontend & Speech Synthesis**: Connect I2S digital microphones (INMP441) for on-chip wake-word detection and I2S DAC amplifiers (MAX98357A) for local voice responses.
+   - **Robotics & Actuator Interfacing**: Connect motor drivers, servo controllers, and environmental sensor buses (I2C/SPI/CAN) to evolve this micro-LLM into a fully offline physical "JARVIS" assistant module for embedded robotics.
 
 ---
 
