@@ -249,12 +249,6 @@ Xin chân thành gửi lời cảm ơn đến cộng đồng nguồn mở đã c
 
 ---
 
-## Lịch Sử Gắn Sao (Star History)
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Ngducok/esp32-S3-Super-Mini-AI&type=Date)](https://star-history.com/#Ngducok/esp32-S3-Super-Mini-AI&Date)
-
----
-
 ## Giấy phép nguồn mở
 
 Dự án được phát hành theo giấy phép [MIT License](LICENSE).

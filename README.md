@@ -278,12 +278,6 @@ Special thanks to the open-source community whose work and shared insights made 
 
 ---
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=Ngducok/esp32-S3-Super-Mini-AI&type=Date)](https://star-history.com/#Ngducok/esp32-S3-Super-Mini-AI&Date)
-
----
-
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
