@@ -40,6 +40,19 @@ static inline float gelu_act(float x) {
     return 0.5f * x * (1.0f + tanhf(0.79788456f * (x + 0.044715f * x * x * x)));
 }
 
+static inline void softmax_arr(float* vec, uint32_t size) {
+    float max_v = vec[0];
+    for (uint32_t i = 1; i < size; i++) if (vec[i] > max_v) max_v = vec[i];
+    float sum_exp = 0.0f;
+    for (uint32_t i = 0; i < size; i++) {
+        float e = expf(vec[i] - max_v);
+        vec[i] = e;
+        sum_exp += e;
+    }
+    float inv_sum = 1.0f / (sum_exp > 1e-7f ? sum_exp : 1.0f);
+    for (uint32_t i = 0; i < size; i++) vec[i] *= inv_sum;
+}
+
 static void matvec_int8(const int8_t* mat, const int8_t* vec_in, float* vec_out, uint32_t rows, uint32_t cols) {
     for (uint32_t r = 0; r < rows; r++) {
         int32_t acc = 0;
@@ -88,10 +101,41 @@ void forwardToken(uint8_t token_id, uint32_t pos, float* out_logits) {
         float_to_int8(k, s_k_cache[l][eff_pos], LLM::Weights::DIM);
         float_to_int8(v, s_v_cache[l][eff_pos], LLM::Weights::DIM);
 
-        // Attention Projection
-        float attn_out[LLM::Weights::DIM];
-        matvec_int8(wo, x_q, attn_out, LLM::Weights::DIM, LLM::Weights::DIM);
-        for (uint32_t i = 0; i < LLM::Weights::DIM; i++) x[i] += attn_out[i];
+        uint32_t current_len = eff_pos + 1;
+
+        // Full Multi-Head Self-Attention
+        float attn_out[LLM::Weights::DIM] = {0.0f};
+        float scores[LLM::Weights::MAX_SEQ_LEN];
+
+        for (uint32_t h = 0; h < LLM::Weights::HEADS; h++) {
+            uint32_t h_start = h * LLM::Weights::HEAD_DIM;
+
+            for (uint32_t t = 0; t < current_len; t++) {
+                float dot = 0.0f;
+                const int8_t* k_cached = &s_k_cache[l][t][h_start];
+                for (uint32_t d = 0; d < LLM::Weights::HEAD_DIM; d++) {
+                    dot += q[h_start + d] * ((float)k_cached[d] * (1.0f / 30.0f));
+                }
+                scores[t] = dot * 0.25f; // 1 / sqrt(16)
+            }
+
+            softmax_arr(scores, current_len);
+
+            for (uint32_t d = 0; d < LLM::Weights::HEAD_DIM; d++) {
+                float val_acc = 0.0f;
+                for (uint32_t t = 0; t < current_len; t++) {
+                    val_acc += scores[t] * ((float)s_v_cache[l][t][h_start + d] * (1.0f / 30.0f));
+                }
+                attn_out[h_start + d] = val_acc;
+            }
+        }
+
+        // Out Projection: x = x + attn_out * WO
+        int8_t attn_q[LLM::Weights::DIM];
+        float_to_int8(attn_out, attn_q, LLM::Weights::DIM);
+        float proj_out[LLM::Weights::DIM];
+        matvec_int8(wo, attn_q, proj_out, LLM::Weights::DIM, LLM::Weights::DIM);
+        for (uint32_t i = 0; i < LLM::Weights::DIM; i++) x[i] += proj_out[i];
 
         // MLP FFN
         float_to_int8(x, x_q, LLM::Weights::DIM);
@@ -211,7 +255,9 @@ void handleChatAPI() {
 
         const char* tok_str = LLM::Weights::VOCAB_TOKENS[next_tok];
         if (tok_str && strlen(tok_str) > 0 && tok_str[0] != ' ') {
-            if (generatedReply.length() > 0) generatedReply += " ";
+            bool is_punct = (tok_str[0] == '!' || tok_str[0] == ',' || tok_str[0] == '.' || 
+                             tok_str[0] == '?' || tok_str[0] == ':');
+            if (generatedReply.length() > 0 && !is_punct) generatedReply += " ";
             generatedReply += tok_str;
             tokens_gen++;
             recent[tokens_gen % 8] = next_tok;

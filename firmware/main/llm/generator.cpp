@@ -105,8 +105,10 @@ GenerationStats Generator::generateStream(const char* prompt,
 
         const char* tok_str = Weights::VOCAB_TOKENS[next_token];
         if (tok_str && strlen(tok_str) > 0 && tok_str[0] != ' ') {
+            bool is_punct = (tok_str[0] == '!' || tok_str[0] == ',' || tok_str[0] == '.' || 
+                             tok_str[0] == '?' || tok_str[0] == ':');
             if (on_token) {
-                if (tokens_gen > 0) {
+                if (tokens_gen > 0 && !is_punct) {
                     on_token(" ");
                 }
                 on_token(tok_str);
