@@ -5,7 +5,7 @@
 
 namespace LLM {
 
-// SRAM-Allocated KV-Cache (3 layers x 64 tokens x 64 dim) -> Only ~12 KB SRAM!
+// SRAM-Allocated KV-Cache (3 layers x 64 tokens x 64 dim x 2 = 24.5 KB total in SRAM)
 static int8_t s_k_cache[Weights::LAYERS][Weights::MAX_SEQ_LEN][Weights::DIM];
 static int8_t s_v_cache[Weights::LAYERS][Weights::MAX_SEQ_LEN][Weights::DIM];
 static uint32_t s_cache_len = 0;

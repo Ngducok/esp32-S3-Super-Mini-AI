@@ -44,9 +44,9 @@ static void chatTask(void* pvParameters) {
     printf("====================================================================\n");
     printf("     ESP32-S3 ON-DEVICE GENERATIVE MICRO-TRANSFORMER (JARVIS)       \n");
     printf("====================================================================\n");
-    printf("  • Model        : Transformer Decoder-Only (d=64, L=3, H=4, INT8)\n");
+    printf("  • Model        : Transformer Decoder-Only (119K Params, INT8, d=64, L=3, H=4)\n");
     printf("  • Storage      : Flash Cold Weights (Zero SRAM weight footprint)\n");
-    printf("  • KV-Cache RAM : ~12 KB Static Buffer in SRAM (No PSRAM needed!)\n");
+    printf("  • KV-Cache RAM : ~24.5 KB Static Buffer in SRAM (12.3 KB K + 12.3 KB V)\n");
     printf("  • WiFi Hotspot : SSID: 'ESP32-Local-AI' | Pass: '12345678'\n");
     printf("  • Web Chat UI  : http://192.168.4.1 (Connect phone WiFi to chat)\n");
     printf("  • Serial Prompt: Type ANY English prompt below and watch AI stream!\n");
@@ -63,7 +63,7 @@ static void chatTask(void* pvParameters) {
 
                     printf("\n====================================================================\n");
                     printf(">>> [PROMPT] : %s\n", input_line);
-                    printf("<<< [STREAM] : %s", input_line);
+                    printf("<<< [STREAM] : ");
                     fflush(stdout);
 
                     // Autoregressive Token Generation & Live Streaming

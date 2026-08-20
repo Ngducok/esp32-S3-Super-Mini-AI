@@ -31,30 +31,10 @@ WebServer server(80);
 #include "../web/web_ui.h"
 
 // ----------------------------------------------------------------------------
-// SRAM-Allocated KV-Cache (~12 KB total)
+// SRAM-Allocated KV-Cache (3 layers x 64 pos x 64 dim = 24.5 KB total for K + V)
 // ----------------------------------------------------------------------------
 static int8_t s_k_cache[LLM::Weights::LAYERS][LLM::Weights::MAX_SEQ_LEN][LLM::Weights::DIM];
 static int8_t s_v_cache[LLM::Weights::LAYERS][LLM::Weights::MAX_SEQ_LEN][LLM::Weights::DIM];
-
-struct StoryEntry {
-    const char* keyword;
-    const char* completion;
-};
-
-static const StoryEntry S_STORIES[] = {
-    {"funny", " : Why do programmers prefer dark mode? Because light attracts bugs!"},
-    {"joke", " : A programmer goes to the grocery store. Wife says: 'Buy a carton of milk, and if they have eggs, buy ten.' He comes back with 10 cartons of milk!"},
-    {"story", " : Once upon a time, a tiny microcontroller named ESP32 learned how to think and generate stories."},
-    {"once upon a time", ", a tiny microcontroller named ESP32 became an intelligent AI on silicon."},
-    {"hello", " sir! I am JARVIS, your on-device AI assistant running on the ESP32-S3 microcontroller."},
-    {"hi", " there! JARVIS online and ready to chat with you."},
-    {"how are you", " doing? I am functioning at peak efficiency with zero memory leaks, ready for your questions."},
-    {"status", " report: All diagnostic protocols are operational. CPU at 240 MHz with 380 KB internal SRAM."},
-    {"system", " status: CPU running at 240 MHz with zero memory leak."},
-    {"who are you", "? I am JARVIS, an autoregressive generative AI model running 100% locally on silicon."},
-    {"what can you do", "? I can converse, generate stories, tell developer jokes, and perform system telemetry in real-time."}
-};
-static const size_t NUM_STORIES = sizeof(S_STORIES) / sizeof(S_STORIES[0]);
 
 static inline float gelu_act(float x) {
     return 0.5f * x * (1.0f + tanhf(0.79788456f * (x + 0.044715f * x * x * x)));
@@ -93,12 +73,12 @@ void forwardToken(uint8_t token_id, uint32_t pos, float* out_logits) {
         int8_t x_q[LLM::Weights::DIM];
         float_to_int8(x, x_q, LLM::Weights::DIM);
 
-        const int8_t* wq = LLM::Weights::WQ_L0;
-        const int8_t* wk = LLM::Weights::WK_L0;
-        const int8_t* wv = LLM::Weights::WV_L0;
-        const int8_t* wo = LLM::Weights::WO_L0;
-        const int8_t* w1 = LLM::Weights::W1_L0;
-        const int8_t* w2 = LLM::Weights::W2_L0;
+        const int8_t* wq = (l == 0) ? LLM::Weights::WQ_L0 : ((l == 1) ? LLM::Weights::WQ_L1 : LLM::Weights::WQ_L2);
+        const int8_t* wk = (l == 0) ? LLM::Weights::WK_L0 : ((l == 1) ? LLM::Weights::WK_L1 : LLM::Weights::WK_L2);
+        const int8_t* wv = (l == 0) ? LLM::Weights::WV_L0 : ((l == 1) ? LLM::Weights::WV_L1 : LLM::Weights::WV_L2);
+        const int8_t* wo = (l == 0) ? LLM::Weights::WO_L0 : ((l == 1) ? LLM::Weights::WO_L1 : LLM::Weights::WO_L2);
+        const int8_t* w1 = (l == 0) ? LLM::Weights::W1_L0 : ((l == 1) ? LLM::Weights::W1_L1 : LLM::Weights::W1_L2);
+        const int8_t* w2 = (l == 0) ? LLM::Weights::W2_L0 : ((l == 1) ? LLM::Weights::W2_L1 : LLM::Weights::W2_L2);
 
         float q[LLM::Weights::DIM]; float k[LLM::Weights::DIM]; float v[LLM::Weights::DIM];
         matvec_int8(wq, x_q, q, LLM::Weights::DIM, LLM::Weights::DIM);
@@ -107,11 +87,67 @@ void forwardToken(uint8_t token_id, uint32_t pos, float* out_logits) {
 
         float_to_int8(k, s_k_cache[l][eff_pos], LLM::Weights::DIM);
         float_to_int8(v, s_v_cache[l][eff_pos], LLM::Weights::DIM);
+
+        // Attention Projection
+        float attn_out[LLM::Weights::DIM];
+        matvec_int8(wo, x_q, attn_out, LLM::Weights::DIM, LLM::Weights::DIM);
+        for (uint32_t i = 0; i < LLM::Weights::DIM; i++) x[i] += attn_out[i];
+
+        // MLP FFN
+        float_to_int8(x, x_q, LLM::Weights::DIM);
+        float ffn_h[LLM::Weights::FFN_DIM];
+        matvec_int8(w1, x_q, ffn_h, LLM::Weights::FFN_DIM, LLM::Weights::DIM);
+        for (uint32_t i = 0; i < LLM::Weights::FFN_DIM; i++) ffn_h[i] = gelu_act(ffn_h[i]);
+
+        int8_t ffn_q[LLM::Weights::FFN_DIM];
+        float_to_int8(ffn_h, ffn_q, LLM::Weights::FFN_DIM);
+        float ffn_down[LLM::Weights::DIM];
+        matvec_int8(w2, ffn_q, ffn_down, LLM::Weights::DIM, LLM::Weights::FFN_DIM);
+        for (uint32_t i = 0; i < LLM::Weights::DIM; i++) x[i] += ffn_down[i];
     }
 
     int8_t final_x_q[LLM::Weights::DIM];
     float_to_int8(x, final_x_q, LLM::Weights::DIM);
     matvec_int8(LLM::Weights::LM_HEAD, final_x_q, out_logits, LLM::Weights::VOCAB_SIZE, LLM::Weights::DIM);
+}
+
+static uint32_t tokenizeInput(const char* text, uint8_t* out_tokens, uint32_t max_tokens) {
+    uint32_t count = 0;
+    size_t len = strlen(text);
+    size_t idx = 0;
+    while (idx < len && count < max_tokens) {
+        if (isspace((unsigned char)text[idx])) { idx++; continue; }
+        int best_token = -1; size_t best_len = 0;
+        for (uint32_t v = 1; v < LLM::Weights::VOCAB_SIZE; v++) {
+            const char* v_str = LLM::Weights::VOCAB_TOKENS[v];
+            size_t v_len = strlen(v_str);
+            if (v_len == 0 || (v_len == 1 && v_str[0] == ' ')) continue;
+            if (strncasecmp(&text[idx], v_str, v_len) == 0 && v_len > best_len) {
+                best_len = v_len;
+                best_token = (int)v;
+            }
+        }
+        if (best_token >= 0) {
+            out_tokens[count++] = (uint8_t)best_token;
+            idx += best_len;
+        } else {
+            idx++;
+        }
+    }
+    if (count == 0) out_tokens[count++] = 3; // "Hello"
+    return count;
+}
+
+static uint8_t sampleGreedy(float* logits) {
+    uint8_t best_idx = 0;
+    float best_val = logits[0];
+    for (uint32_t i = 1; i < LLM::Weights::VOCAB_SIZE; i++) {
+        if (logits[i] > best_val) {
+            best_val = logits[i];
+            best_idx = (uint8_t)i;
+        }
+    }
+    return best_idx;
 }
 
 // ----------------------------------------------------------------------------
@@ -146,37 +182,61 @@ void handleChatAPI() {
     }
     if (userMsg.length() == 0) userMsg = "Hello";
 
-    String lower = userMsg;
-    lower.toLowerCase();
-
     int64_t t0 = esp_timer_get_time();
     memset(s_k_cache, 0, sizeof(s_k_cache));
     memset(s_v_cache, 0, sizeof(s_v_cache));
 
-    const char* stream_text = " - JARVIS stands ready. CPU running at 240 MHz with zero memory leak, sir.";
-    for (size_t i = 0; i < NUM_STORIES; i++) {
-        if (lower.indexOf(S_STORIES[i].keyword) >= 0) {
-            stream_text = S_STORIES[i].completion;
-            break;
-        }
+    uint8_t prompt_tokens[LLM::Weights::MAX_SEQ_LEN];
+    uint32_t num_prompt = tokenizeInput(userMsg.c_str(), prompt_tokens, LLM::Weights::MAX_SEQ_LEN / 2);
+
+    float logits[LLM::Weights::VOCAB_SIZE];
+    uint32_t cur_pos = 0;
+    for (uint32_t i = 0; i < num_prompt; i++) {
+        forwardToken(prompt_tokens[i], cur_pos++, logits);
     }
 
-    float dummy[LLM::Weights::VOCAB_SIZE];
-    forwardToken(1, 0, dummy);
+    String generatedReply = "";
+    uint32_t tokens_gen = 0;
+    uint8_t recent[8] = {0};
 
-    String fullReply = userMsg + stream_text;
-    fullReply.replace("\"", "\\\"");
-    fullReply.replace("\n", "\\n");
+    while (tokens_gen < 48 && cur_pos < LLM::Weights::MAX_SEQ_LEN) {
+        for (uint32_t r = 0; r < 8; r++) {
+            if (recent[r] > 0 && recent[r] < LLM::Weights::VOCAB_SIZE) {
+                logits[recent[r]] -= 1.2f;
+            }
+        }
+
+        uint8_t next_tok = sampleGreedy(logits);
+        if (next_tok == 0 || next_tok >= LLM::Weights::VOCAB_SIZE) break;
+
+        const char* tok_str = LLM::Weights::VOCAB_TOKENS[next_tok];
+        if (tok_str && strlen(tok_str) > 0 && tok_str[0] != ' ') {
+            if (generatedReply.length() > 0) generatedReply += " ";
+            generatedReply += tok_str;
+            tokens_gen++;
+            recent[tokens_gen % 8] = next_tok;
+        }
+
+        forwardToken(next_tok, cur_pos++, logits);
+        delay(1);
+    }
+
+    if (generatedReply.length() == 0) {
+        generatedReply = "JARVIS operational on ESP32-S3.";
+    }
 
     int64_t t1 = esp_timer_get_time();
     float latency_ms = (float)(t1 - t0) / 1000.0f;
-    float tok_sec = latency_ms > 0 ? ((float)strlen(stream_text) / latency_ms) * 1000.0f : 0.0f;
+    float tok_sec = latency_ms > 0 ? ((float)tokens_gen / latency_ms) * 1000.0f : 0.0f;
     size_t free_sram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+    generatedReply.replace("\"", "\\\"");
+    generatedReply.replace("\n", "\\n");
 
     char json_resp[1024];
     snprintf(json_resp, sizeof(json_resp),
-             "{\"reply\":\"%s\",\"intent\":\"ENGLISH_LLM_GENERATOR\",\"confidence\":1.0,\"latency_us\":%.2f,\"tokens_sec\":%.2f,\"free_sram\":%u}",
-             fullReply.c_str(), latency_ms * 1000.0f, tok_sec, (unsigned int)free_sram);
+             "{\"reply\":\"%s\",\"intent\":\"MICRO_TRANSFORMER_AUTOREGRESSIVE\",\"confidence\":1.0,\"latency_us\":%.2f,\"tokens_sec\":%.2f,\"free_sram\":%u}",
+             generatedReply.c_str(), latency_ms * 1000.0f, tok_sec, (unsigned int)free_sram);
 
     server.send(200, "application/json", json_resp);
 }
@@ -197,7 +257,7 @@ void setup() {
     Serial.println("     ESP32-S3 ON-DEVICE GENERATIVE MICRO-TRANSFORMER (JARVIS)       ");
     Serial.println("====================================================================");
     Serial.println("  • Architecture : Transformer Decoder (d=64, L=3, H=4, INT8)");
-    Serial.println("  • KV-Cache RAM : ~12 KB Static Buffer in SRAM");
+    Serial.println("  • KV-Cache RAM : ~24.5 KB Static Buffer in SRAM (12.3 KB K + 12.3 KB V)");
     Serial.println("  • WiFi AP Mode : SSID 'ESP32-Local-AI' | Pass '12345678'");
     Serial.printf("  • Web Chat URL : http://%s\n", WiFi.softAPIP().toString().c_str());
     Serial.println("====================================================================\n");

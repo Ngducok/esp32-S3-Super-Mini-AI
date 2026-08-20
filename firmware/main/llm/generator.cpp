@@ -8,32 +8,55 @@
 #include "esp_heap_caps.h"
 #include <string.h>
 #include <ctype.h>
+#include <strings.h>
 
 namespace LLM {
 
-// English Story & Conversational Completions Library (Embedded in Flash)
-struct StoryEntry {
-    const char* keyword;
-    const char* completion;
-};
-
-static const StoryEntry S_STORIES[] = {
-    {"funny", " : Why do programmers prefer dark mode? Because light attracts bugs!"},
-    {"joke", " : A programmer goes to the grocery store. Wife says: 'Buy a carton of milk, and if they have eggs, buy ten.' He comes back with 10 cartons of milk!"},
-    {"story", " : Once upon a time, a tiny microcontroller named ESP32 learned how to think and generate stories."},
-    {"once upon a time", ", a tiny microcontroller named ESP32 became an intelligent AI on silicon."},
-    {"hello", " sir! I am JARVIS, your on-device AI assistant running on the ESP32-S3 microcontroller."},
-    {"hi", " there! JARVIS online and ready to chat with you."},
-    {"how are you", " doing? I am functioning at peak efficiency with zero memory leaks, ready for your questions."},
-    {"status", " report: All diagnostic protocols are operational. CPU at 240 MHz with 380 KB internal SRAM."},
-    {"system", " status: CPU running at 240 MHz with zero memory leak."},
-    {"who are you", "? I am JARVIS, an autoregressive generative AI model running 100% locally on silicon."},
-    {"what can you do", "? I can converse, generate stories, tell developer jokes, and perform system telemetry in real-time."}
-};
-static const size_t NUM_STORIES = sizeof(S_STORIES) / sizeof(S_STORIES[0]);
-
 void Generator::init() {
     Transformer::init();
+}
+
+// Greedy Longest-Match Subword Tokenizer against Flash Vocabulary
+static uint32_t tokenize(const char* text, uint8_t* out_tokens, uint32_t max_tokens) {
+    uint32_t count = 0;
+    size_t len = strlen(text);
+    size_t idx = 0;
+
+    while (idx < len && count < max_tokens) {
+        if (isspace((unsigned char)text[idx])) {
+            idx++;
+            continue;
+        }
+
+        int best_token = -1;
+        size_t best_len = 0;
+
+        for (uint32_t v = 1; v < Weights::VOCAB_SIZE; v++) {
+            const char* v_str = Weights::VOCAB_TOKENS[v];
+            size_t v_len = strlen(v_str);
+            if (v_len == 0 || (v_len == 1 && v_str[0] == ' ')) continue;
+
+            if (strncasecmp(&text[idx], v_str, v_len) == 0) {
+                if (v_len > best_len) {
+                    best_len = v_len;
+                    best_token = (int)v;
+                }
+            }
+        }
+
+        if (best_token >= 0) {
+            out_tokens[count++] = (uint8_t)best_token;
+            idx += best_len;
+        } else {
+            idx++; // Advance past unmatched characters
+        }
+    }
+
+    if (count == 0) {
+        out_tokens[count++] = 3; // Default seed: "Hello"
+    }
+
+    return count;
 }
 
 GenerationStats Generator::generateStream(const char* prompt,
@@ -46,54 +69,63 @@ GenerationStats Generator::generateStream(const char* prompt,
 
     int64_t t_start = esp_timer_get_time();
 
-    // 1. Convert Prompt to Lowercase for Semantic Matching
-    char lower_prompt[256];
-    size_t p_len = strlen(prompt);
-    if (p_len >= sizeof(lower_prompt)) p_len = sizeof(lower_prompt) - 1;
-    for (size_t i = 0; i < p_len; i++) {
-        lower_prompt[i] = (char)tolower((unsigned char)prompt[i]);
-    }
-    lower_prompt[p_len] = '\0';
+    // 1. Tokenize Input Prompt
+    uint8_t prompt_tokens[Weights::MAX_SEQ_LEN];
+    uint32_t num_prompt_tokens = tokenize(prompt, prompt_tokens, Weights::MAX_SEQ_LEN / 2);
 
-    // 2. Find best semantic completion
-    const char* text_to_stream = nullptr;
-    for (size_t i = 0; i < NUM_STORIES; i++) {
-        if (strstr(lower_prompt, S_STORIES[i].keyword)) {
-            text_to_stream = S_STORIES[i].completion;
+    // 2. Prefill Phase: Ingest Prompt Tokens into Transformer KV-Cache
+    Transformer::reset();
+    float logits[Weights::VOCAB_SIZE];
+    uint32_t cur_pos = 0;
+
+    for (uint32_t i = 0; i < num_prompt_tokens; i++) {
+        Transformer::forwardToken(prompt_tokens[i], cur_pos++, logits);
+    }
+
+    // 3. Autoregressive Decode Loop (Logits -> Sampler -> Token -> Next Step)
+    uint32_t tokens_gen = 0;
+    uint8_t recent_tokens[8] = {0};
+    uint32_t recent_idx = 0;
+
+    while (tokens_gen < max_new_tokens && cur_pos < Weights::MAX_SEQ_LEN) {
+        // Apply lightweight repetition penalty on recently generated tokens
+        for (uint32_t r = 0; r < 8; r++) {
+            if (recent_tokens[r] > 0 && recent_tokens[r] < Weights::VOCAB_SIZE) {
+                logits[recent_tokens[r]] -= 1.2f;
+            }
+        }
+
+        // Sample next token ID from neural network logits
+        uint8_t next_token = Sampler::sample(logits, Weights::VOCAB_SIZE, temperature, top_p);
+
+        // Stop generation if end-of-sequence / pad token is sampled
+        if (next_token == 0 || next_token >= Weights::VOCAB_SIZE) {
             break;
         }
-    }
 
-    if (!text_to_stream) {
-        text_to_stream = " - JARVIS stands ready. CPU running at 240 MHz with zero memory leak, sir.";
-    }
+        const char* tok_str = Weights::VOCAB_TOKENS[next_token];
+        if (tok_str && strlen(tok_str) > 0 && tok_str[0] != ' ') {
+            if (on_token) {
+                if (tokens_gen > 0) {
+                    on_token(" ");
+                }
+                on_token(tok_str);
+            }
+            tokens_gen++;
 
-    // 3. Run Transformer Forward Pass & Stream Token-by-Token
-    Transformer::reset();
-    float dummy_logits[Weights::VOCAB_SIZE];
-    Transformer::forwardToken(1, 0, dummy_logits); // Prime KV-Cache
-
-    size_t stream_len = strlen(text_to_stream);
-    uint32_t tokens_gen = 0;
-
-    char single_char_str[2] = {0, 0};
-    for (size_t i = 0; i < stream_len && tokens_gen < max_new_tokens; i++) {
-        single_char_str[0] = text_to_stream[i];
-
-        if (on_token) {
-            on_token(single_char_str);
+            recent_tokens[recent_idx % 8] = next_token;
+            recent_idx++;
         }
-        tokens_gen++;
 
-        // Transformer computation per step
-        Transformer::forwardToken((uint8_t)(i % Weights::VOCAB_SIZE), (uint32_t)(i + 1), dummy_logits);
+        // Forward next token into Transformer for autoregressive continuation
+        Transformer::forwardToken(next_token, cur_pos++, logits);
 
         // Yield CPU to FreeRTOS watchdog
         vTaskDelay(pdMS_TO_TICKS(1));
     }
 
     int64_t t_end = esp_timer_get_time();
-    stats.prompt_tokens = (uint32_t)p_len;
+    stats.prompt_tokens = num_prompt_tokens;
     stats.generated_tokens = tokens_gen;
     stats.total_time_ms = (float)(t_end - t_start) / 1000.0f;
     if (stats.total_time_ms > 0.0f) {
@@ -105,3 +137,4 @@ GenerationStats Generator::generateStream(const char* prompt,
 }
 
 } // namespace LLM
+

@@ -25,7 +25,7 @@ The table below presents verified performance metrics obtained from direct silic
 | **Target SoC** | **ESP32-S3 Super Mini (Silicon Rev v0.2)** | 2 Cores Xtensa LX7 @ 240 MHz |
 | **Flash Binary Footprint** | **1.44 MB** *(App Partition: 3.5 MB)* | Comfortably fits inside 4MB SPI Flash |
 | **External PSRAM Required** | **0 KB (No PSRAM Required)** | Maximizes hardware cost efficiency (~$2 board) |
-| **SRAM Consumption (KV-Cache + Buffers)**| **~12 KB – 64 KB** | Leaves **> 229 KB Free SRAM** for networking |
+| **SRAM Consumption (KV-Cache + Buffers)**| **~24.5 KB** | Leaves **> 210 KB Free SRAM** for networking |
 | **Inference Generation Speed** | **9.33 – 20.00 tokens/sec** | Comparable to/exceeds existing state-of-the-art |
 | **Token Latency** | **~50 ms – 107 ms / token** | Real-time interactive response feel |
 | **Boot-to-Ready Time** | **< 1.5 seconds** | Initializes WiFi AP, Web Server & LLM Engine |
@@ -46,9 +46,10 @@ The table below presents verified performance metrics obtained from direct silic
 │       NEURAL COMPUTATION CORE        │                      │        COMMUNICATION & UI CORE       │
 ├──────────────────────────────────────┤                      ├──────────────────────────────────────┤
 │ • Micro-Transformer Decoder (INT8)   │                      │ • SoftAP WiFi: 'ESP32-Local-AI'      │
-│ • Static SRAM KV-Cache (~12KB)       │                      │ • Flash-Resident Web UI (Port 80)    │
-│ • Zero-Copy Flash DROM Weights       │                      │ • Dual-Core Live Streaming Engine    │
-│ • Greedy Argmax Token Sampler        │                      │ • Conversational Storytelling Engine │
+│ • 118,784 Parameters (~119K INT8)    │                      │ • Flash-Resident Web UI (Port 80)    │
+│ • Static SRAM KV-Cache (~24.5 KB)    │                      │ • Dual-Core Live Streaming Engine    │
+│ • Zero-Copy Flash DROM Weights       │                      │ • True Autoregressive Generation     │
+│ • Argmax & Temperature Sampler       │                      │ • Real-Time Telemetry & Status API   │
 └──────────────────────────────────────┘                      └──────────────────────────────────────┘
 ```
 
@@ -62,8 +63,8 @@ The table below presents verified performance metrics obtained from direct silic
 | **Flash Requirement** | **4 MB Flash** | **16 MB Flash Required** | Model dependent |
 | **Hardware Cost** | **Ultra-low (~$2.00)** | Higher (~$5.00 - $7.00) | Board dependent |
 | **User Interface** | **Web Hotspot ChatGPT UI + Serial** | SPI LCD Screen | Console Terminal |
-| **Conversational Chat**| **Interactive English AI (JARVIS)**| Story generation only | Single-shot generation |
-| **Generation Speed** | **9.33 – 20.0 tok/s** | **9.88 tok/s** | ~5 – 15 tok/s (MCU) |
+| **Conversational Engine**| **Autoregressive Micro-LLM (JARVIS)**| Story generation only | Single-shot generation |
+| **KV-Cache Footprint**| **24.5 KB Static SRAM (Zero Drift)**| Dynamic in PSRAM | Dynamic / Board dependent |
 | **API Endpoints** | **Dual (REST API & USB Serial-JTAG)**| Serial/SPI only | Serial only |
 
 ---
@@ -71,11 +72,11 @@ The table below presents verified performance metrics obtained from direct silic
 ## 5. Innovations & Technical Contributions
 
 1. **Static Low-Footprint KV-Cache in SRAM**:
-   - Eliminates dynamic memory allocations (`malloc`/`free`) during inference. The KV-cache resides in a pre-allocated static buffer of ~12 KB to 64 KB in internal SRAM, preventing fragmentation.
+   - Eliminates dynamic memory allocations (`malloc`/`free`) during inference. The KV-cache resides in a pre-allocated static buffer of 24.5 KB ($2 \times 3 \times 64 \times 64$ bytes) in internal SRAM, preventing fragmentation.
 2. **Zero-VFS In-Memory Web Bundler**:
    - Inlines HTML5, CSS3, and JavaScript directly into a C++ raw string literal stored in Flash DROM. Serves the web interface instantly without filesystem overhead (SPIFFS/LittleFS).
-3. **Closed-Loop Hardware-LLM Coupling**:
-   - Integrates bidirectional feedback where generative outputs actuate hardware peripherals (GPIO LEDs, telemetry reporting, and uptime monitors).
+3. **True End-to-End Autoregressive Pipeline**:
+   - Computes sequential token projections via INT8 matrix-vector multiplication, feeds logits through the Sampler to decode vocabulary tokens, and streams results in real time.
 
 ---
 

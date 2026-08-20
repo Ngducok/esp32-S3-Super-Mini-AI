@@ -25,7 +25,7 @@ Bảng dưới đây trình bày các chỉ số đo đạc thực tế từ qu�
 | **Vi điều khiển mục tiêu** | **ESP32-S3 Super Mini (Silicon Rev v0.2)** | 2 Cores Xtensa LX7 @ 240 MHz |
 | **Kích thước file nhị phân Flash** | **1.44 MB** *(Phân vùng ứng dụng: 3.5 MB)* | Nằm hoàn hảo trong Flash chuẩn 4MB |
 | **Bộ nhớ PSRAM ngoài yêu cầu** | **0 KB (Không cần PSRAM ngoài)** | Tối ưu hóa chi phí phần cứng (~$2 / bo mạch) |
-| **Tiêu thụ SRAM (KV-Cache + Buffer)**| **~12 KB – 64 KB** | Còn trống **> 229 KB SRAM nội bộ** cho mạng |
+| **Tiêu thụ SRAM (KV-Cache + Buffer)**| **~24.5 KB** | Còn trống **> 210 KB SRAM nội bộ** cho mạng |
 | **Tốc độ sinh token** | **9.33 – 20.00 token/giây** | Ngang ngửa và vượt trội các dự án nhúng quốc tế |
 | **Độ trễ mỗi token** | **~50 ms – 107 ms / token** | Phản hồi mượt mà theo thời gian thực |
 | **Thời gian khởi động hoàn chỉnh** | **< 1.5 giây** | Khởi động cả SoftAP WiFi, Web Server & Model |
@@ -46,9 +46,10 @@ Bảng dưới đây trình bày các chỉ số đo đạc thực tế từ qu�
 │       NEURAL COMPUTATION CORE        │                      │        COMMUNICATION & UI CORE       │
 ├──────────────────────────────────────┤                      ├──────────────────────────────────────┤
 │ • Micro-Transformer Decoder (INT8)   │                      │ • SoftAP WiFi: 'ESP32-Local-AI'      │
-│ • Static SRAM KV-Cache (~12KB)       │                      │ • Flash-Resident Web UI (Port 80)    │
-│ • Zero-Copy Flash DROM Weights       │                      │ • Dual-Core Live Streaming Engine    │
-│ • Greedy Argmax Token Sampler        │                      │ • Conversational Storytelling Engine │
+│ • 118,784 Tham số (~119K INT8)       │                      │ • Flash-Resident Web UI (Port 80)    │
+│ • Static SRAM KV-Cache (~24.5 KB)    │                      │ • Dual-Core Live Streaming Engine    │
+│ • Zero-Copy Flash DROM Weights       │                      │ • Quy trình tự hồi quy thực thụ      │
+│ • Bộ lấy mẫu Argmax & Temperature    │                      │ • Real-Time Telemetry & Status API   │
 └──────────────────────────────────────┘                      └──────────────────────────────────────┘
 ```
 
@@ -62,8 +63,8 @@ Bảng dưới đây trình bày các chỉ số đo đạc thực tế từ qu�
 | **Dung lượng Flash yêu cầu** | **4 MB Flash** | **Bắt buộc 16 MB Flash** | Phụ thuộc kích thước model |
 | **Chi phí phần cứng** | **Siêu rẻ (~70.000 – 90.000 VNĐ)** | Cao hơn (~130.000 – 160.000 VNĐ) | Tùy bo mạch |
 | **Giao diện người dùng** | **Web Hotspot ChatGPT UI + Serial** | Màn hình LCD SPI nhỏ | Console Terminal |
-| **Khả năng hội thoại** | **AI tương tác tiếng Anh (JARVIS)** | Chỉ sinh truyện cố định | Sinh một lần |
-| **Tốc độ sinh chữ** | **9.33 – 20.0 tok/s** | **9.88 tok/s** | ~5 – 15 tok/s (MCU) |
+| **Cơ chế mô hình** | **Micro-LLM tự hồi quy (JARVIS)** | Chỉ sinh truyện cố định | Sinh một lần |
+| **Kích thước KV-Cache** | **24.5 KB tĩnh trong SRAM (0-Leak)** | Động trong PSRAM | Động / Tùy bo mạch |
 | **Giao thức kết nối** | **Kênh đôi (REST API & Serial)** | Chỉ Serial/SPI | Chỉ Serial |
 
 ---
@@ -71,11 +72,11 @@ Bảng dưới đây trình bày các chỉ số đo đạc thực tế từ qu�
 ## 5. Điểm Đổi Mới & Đóng Góp Kỹ Thuật
 
 1. **Bộ đệm KV-Cache tĩnh trong SRAM nội bộ**:
-   - Loại bỏ hoàn toàn việc cấp phát động (`malloc`/`free`) trong quá trình suy luận. KV-Cache nằm cố định trong vùng nhớ ~12 KB đến 64 KB trong SRAM nội bộ, ngăn ngừa hiện tượng phân mảnh bộ nhớ.
+   - Loại bỏ hoàn toàn việc cấp phát động (`malloc`/`free`) trong quá trình suy luận. KV-Cache nằm cố định trong vùng nhớ 24.5 KB ($2 \times 3 \times 64 \times 64$ bytes) trong SRAM nội bộ, ngăn ngừa hiện tượng phân mảnh bộ nhớ.
 2. **Cơ chế nhúng Web Zero-VFS vào Flash**:
    - Tích hợp toàn bộ mã nguồn HTML5, CSS3 và JavaScript thành chuỗi hằng số C++ lưu trên Flash DROM. Máy chủ HTTP phục vụ trang web tức thì mà không cần phân vùng hệ thống tệp tin (SPIFFS/LittleFS).
-3. **Mô hình ngôn ngữ độc lập không cần Internet**:
-   - Xử lý hoàn toàn trên chip, không gửi dữ liệu ra bên ngoài, phản hồi tức thì với độ trễ thấp.
+3. **Quy trình suy luận tự hồi quy thực thụ**:
+   - Tính toán trực tiếp tích ma trận INT8 qua từng bước, truyền logits qua bộ Sampler để giải mã token từ vựng và truyền trực tiếp về cho người dùng trong thời gian thực.
 
 ---
 

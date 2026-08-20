@@ -23,7 +23,7 @@ The `firmware/main/` directory contains the core application entry point and com
              ▼                          ▼                          ▼
        [config/]                  [diagnostics/]                 [llm/]
  • Hardware pin definitions  • Silicon probing API        • Transformer core (INT8)
- • Task priorities & stacks  • Zero-leak heap auditor    • Static SRAM KV-cache (~12KB)
+ • Task priorities & stacks  • Zero-leak heap auditor    • Static SRAM KV-cache (~24.5KB)
  • Safety thresholds         • Telemetry & JSON stream    • Argmax token sampler
                                                                    │
                                                                    ▼

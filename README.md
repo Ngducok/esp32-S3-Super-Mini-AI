@@ -26,7 +26,7 @@ While `slvDev/esp32-ai` targets larger ESP32-S3 modules equipped with 8MB Octal 
 | :--- | :--- | :--- |
 | **Inspiration Source** | Google Gemma 3n (Per-Layer Embeddings) | `slvDev/esp32-ai` & LLaMA Decoder Architecture |
 | **Target Hardware** | ESP32-S3 N16R8 (16MB Flash / 8MB PSRAM) | ESP32-S3 Super Mini (4MB Flash / **0 KB PSRAM**) |
-| **Memory Allocation** | Relies on 8MB Octal PSRAM for KV/weights | **100% Internal SRAM only** (~12 KB KV-Cache) |
+| **Memory Allocation** | Relies on 8MB Octal PSRAM for KV/weights | **100% Internal SRAM only** (~24.5 KB KV-Cache) |
 | **Output Interface** | SPI LCD Screen wired to GPIOs | **SoftAP WiFi Hotspot + In-Memory Web Chat UI** |
 | **Serving Mechanism** | Local SPI frame buffer | Asynchronous HTTP REST API on Port 80 |
 | **Cost & Accessibility** | Higher-end module (~$5 - $7) | Ultra-budget module (~$2) |
@@ -40,11 +40,13 @@ While `slvDev/esp32-ai` targets larger ESP32-S3 modules equipped with 8MB Octal 
 | Chip | ESP32-S3 Super Mini (Dual-Core Xtensa LX7 @ 240 MHz) |
 | Internal SRAM | 512 KB total (~380 KB usable internal SRAM) |
 | External PSRAM | **Disabled / 0 KB Required** (Runs on all board variants) |
+| Model Scale | **118,784 Parameters** (~119K params, 3 Layers, $d=64$, 4 Heads) |
+| Vocabulary | 128 Subword Tokens (Flash DROM String Table) |
+| Weight Storage | 119 KB INT8 Matrices stored in Flash DROM (Zero-Copy) |
+| KV-Cache Footprint | **24.5 KB static buffer** in SRAM ($2 \times 3 \times 64 \times 64 = 24,576\text{ B}$) |
 | Flash Footprint | 1.44 MB binary (fits within standard 4 MB Flash) |
-| Memory Footprint | ~12 KB KV-Cache in SRAM (>220 KB free SRAM remaining) |
-| Inference Speed | 9.33 – 20.00 tokens/sec end-to-end |
-| Token Latency | ~50 ms – 107 ms per token |
-| Connectivity | Standalone SoftAP WiFi (`ESP32-Local-AI`) + USB Serial-JTAG |
+| Free SRAM at Runtime | $> 210\text{ KB}$ free SRAM (Zero memory leaks or heap drift) |
+| Generation Engine | **100% True Autoregressive** (`Logits -> Sampler -> Token -> Next Step`) |
 | Quantization | INT8 symmetric per-tensor |
 
 > [!NOTE]
@@ -71,11 +73,11 @@ On a bare-metal ESP32-S3 Super Mini with 0 KB external PSRAM, fitting a neural t
 ```
 
 - **Flash DROM (Zero-Copy Read)**: Weight matrices ($W_q, W_k, W_v, W_o, W_1, W_2, W_{te}, W_{pe}, W_{head}$) and vocabulary strings are mapped as `const int8_t` arrays into Flash Data ROM. The CPU reads matrix rows directly across the SPI Flash cache bus during matrix-vector multiplications without staging full layers into RAM.
-- **Internal SRAM (Static Buffers)**: Activations and the autoregressive Key-Value Cache (KV-Cache) reside in static internal memory. For a sequence length of 64 tokens across 3 Transformer layers with hidden dimension $d=64$, the KV-Cache consumes exactly:
+- **Internal SRAM (Static Buffers)**: Activations and the autoregressive Key-Value Cache (KV-Cache) reside in static internal memory. For a sequence length of 64 tokens across 3 Transformer layers with hidden dimension $d=64$, the combined Key and Value Cache consumes exactly:
 
-$$3 \text{ layers} \times 64 \text{ tokens} \times 64 \text{ dimensions} = 12,288 \text{ bytes} \approx 12 \text{ KB}$$
+$$2 \times 3 \text{ layers} \times 64 \text{ tokens} \times 64 \text{ dimensions} = 24,576 \text{ bytes} \approx 24.5 \text{ KB}$$
 
-This leaves over 220 KB of free internal SRAM for WiFi protocol buffers, TCP/IP sockets, and FreeRTOS task stacks.
+(Comprising $12,288\text{ bytes Key Cache} + 12,288\text{ bytes Value Cache}$). This leaves over 210 KB of free internal SRAM for WiFi protocol buffers, TCP/IP sockets, and FreeRTOS task stacks.
 
 > [!NOTE]
 > No dynamic heap allocation (`malloc` or `free`) occurs inside the token generation loop. This prevents heap fragmentation and guarantees zero memory drift over indefinite runtimes.

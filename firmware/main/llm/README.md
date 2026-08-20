@@ -33,7 +33,7 @@ $$\text{Output}[r] = \left( \sum_{c=0}^{\text{cols}-1} W[r, c] \cdot X_q[c] \rig
    static int8_t s_k_cache[LAYERS][MAX_SEQ_LEN][DIM];
    static int8_t s_v_cache[LAYERS][MAX_SEQ_LEN][DIM];
    ```
-   For $L=3, T=64, d=64$, the entire cache consumes exactly $12,288\text{ bytes}$ (~12 KB).
+   For $L=3, T=64, d=64$, the combined Key and Value cache consumes exactly $2 \times 3 \times 64 \times 64 = 24,576\text{ bytes}$ (~24.5 KB).
 
 3. **Deterministic Low-Temperature / Greedy Argmax Sampler**:
    When temperature is zero or near zero, the sampler selects the token corresponding to $\arg\max(\text{logits})$, guaranteeing coherent sentence completion.
@@ -95,8 +95,8 @@ $$\text{Output}[r] = \left( \sum_{c=0}^{\text{cols}-1} W[r, c] \cdot X_q[c] \rig
 | Head Dimension | $d_{\text{head}}$ | 16 |
 | Feed-Forward Dimension | $d_{\text{ff}}$ | 128 |
 | Maximum Context Sequence | $T$ | 64 |
-| SRAM KV-Cache Size | - | 12,288 bytes (~12 KB) |
-| Flash Weight Footprint | - | ~360 KB (Flash DROM) |
+| SRAM KV-Cache Size | - | 24,576 bytes (~24.5 KB total for K + V) |
+| Flash Weight Footprint | - | 118,784 params (~119 KB INT8 in Flash DROM) |
 
 ---
 

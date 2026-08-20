@@ -23,7 +23,7 @@ Thư mục `firmware/main/` chứa điểm khởi chạy ứng dụng chính và
              ▼                          ▼                          ▼
        [config/]                  [diagnostics/]                 [llm/]
  • Định nghĩa chân GPIO cứng  • Thăm dò phần cứng silicon   • Lõi Transformer (INT8)
- • Mức ưu tiên tác vụ & RAM   • Kiểm toán rò rỉ RAM (0-leak)• KV-cache tĩnh SRAM (~12KB)
+ • Mức ưu tiên tác vụ & RAM   • Kiểm toán rò rỉ RAM (0-leak)• KV-cache tĩnh SRAM (~24.5KB)
  • Các ngưỡng an toàn bộ nhớ  • Xuất telemetry JSON         • Bộ lấy mẫu Argmax token
                                                                    │
                                                                    ▼

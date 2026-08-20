@@ -127,8 +127,7 @@ static esp_err_t chat_post_handler(httpd_req_t* req) {
 
     char json_resp[1024];
     snprintf(json_resp, sizeof(json_resp),
-             "{\"reply\":\"%s%s\",\"intent\":\"ENGLISH_LLM_GENERATOR\",\"confidence\":1.0,\"latency_us\":%.2f,\"tokens_sec\":%.2f,\"free_sram\":%u}",
-             user_msg,
+             "{\"reply\":\"%s\",\"intent\":\"MICRO_TRANSFORMER_AUTOREGRESSIVE\",\"confidence\":1.0,\"latency_us\":%.2f,\"tokens_sec\":%.2f,\"free_sram\":%u}",
              clean_reply,
              stats.total_time_ms * 1000.0f,
              stats.tokens_per_second,

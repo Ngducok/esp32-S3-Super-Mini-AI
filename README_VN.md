@@ -26,7 +26,7 @@ Trong khi `slvDev/esp32-ai` hướng đến các module ESP32-S3 cao cấp trang
 | :--- | :--- | :--- |
 | **Nguồn cảm hứng** | Google Gemma 3n (Per-Layer Embeddings) | `slvDev/esp32-ai` & Kiến trúc LLaMA Decoder |
 | **Phần cứng mục tiêu** | ESP32-S3 N16R8 (16MB Flash / 8MB PSRAM) | ESP32-S3 Super Mini (4MB Flash / **0 KB PSRAM**) |
-| **Cơ chế cấp phát RAM** | Phụ thuộc 8MB Octal PSRAM ngoài | **100% SRAM nội bộ tĩnh** (~12 KB KV-Cache) |
+| **Cơ chế cấp phát RAM** | Phụ thuộc 8MB Octal PSRAM ngoài | **100% SRAM nội bộ tĩnh** (~24.5 KB KV-Cache) |
 | **Giao diện tương tác** | Màn hình SPI LCD nối dây GPIO | **Trạm phát WiFi Hotspot + Giao diện Web ChatGPT** |
 | **Cơ chế phục vụ** | Bộ đệm khung hình SPI cục bộ | REST API bất đồng bộ trên cổng HTTP 80 |
 | **Chi phí phần cứng** | Bo mạch phân khúc cao (~130k - 160k VNĐ) | Bo mạch phân khúc tối thiểu (~70k - 90k VNĐ) |
@@ -40,11 +40,13 @@ Trong khi `slvDev/esp32-ai` hướng đến các module ESP32-S3 cao cấp trang
 | Vi điều khiển | ESP32-S3 Super Mini (2 nhân Xtensa LX7 @ 240 MHz) |
 | SRAM nội bộ | Tổng 512 KB (~380 KB SRAM khả dụng) |
 | PSRAM ngoài | **Tắt / 0 KB Yêu Cầu** (Chạy trên mọi biến thể phần cứng) |
+| Quy mô mô hình | **118,784 Tham số** (~119K params, 3 Layer Decoder, $d=64$, 4 Heads) |
+| Kích thước từ vựng | 128 Token chuỗi con (Lưu trong Flash DROM) |
+| Dung lượng trọng số | 119 KB ma trận INT8 đọc Zero-Copy từ Flash DROM |
+| Tiêu thụ KV-Cache | **24.5 KB bộ đệm tĩnh** trong SRAM ($2 \times 3 \times 64 \times 64 = 24,576\text{ B}$) |
 | Kích thước Flash | Nhị phân 1.44 MB (nằm trong Flash chuẩn 4 MB) |
-| Tiêu thụ RAM | ~12 KB KV-Cache trong SRAM (còn trống >220 KB SRAM) |
-| Tốc độ sinh chữ | 9.33 – 20.00 token/giây |
-| Độ trễ mỗi token | ~50 ms – 107 ms / token |
-| Kết nối | WiFi SoftAP độc lập (`ESP32-Local-AI`) + USB Serial-JTAG |
+| RAM trống khi chạy | $> 210\text{ KB}$ SRAM (0 byte rò rỉ hoặc trôi bộ nhớ) |
+| Cơ chế sinh từ | **Tự hồi quy 100% (True Autoregressive)** (`Logits -> Sampler -> Token -> Next Step`) |
 | Lượng tử hóa | INT8 đối xứng theo tensor |
 
 > [!NOTE]
@@ -71,11 +73,11 @@ Trên bo mạch ESP32-S3 Super Mini không có PSRAM, việc vận hành AI tạ
 ```
 
 - **Flash DROM (Đọc trực tiếp Zero-Copy)**: Toàn bộ ma trận trọng số ($W_q, W_k, W_v, W_o, W_1, W_2, W_{te}, W_{pe}, W_{head}$) và chuỗi từ vựng được lưu dưới dạng mảng `const int8_t` trong Flash Data ROM. CPU đọc trực tiếp từng dòng ma trận qua bus SPI Flash cache trong phép nhân ma trận mà không cần tải toàn bộ lớp vào RAM.
-- **SRAM nội bộ (Bộ đệm tĩnh)**: Vùng nhớ Key-Value Cache (KV-Cache) được cấp phát tĩnh trong SRAM. Với chuỗi ngữ cảnh 64 token qua 3 layer Transformer (kích thước ẩn $d=64$), toàn bộ KV-Cache chỉ tiêu thụ:
+- **SRAM nội bộ (Bộ đệm tĩnh)**: Vùng nhớ Key-Value Cache (KV-Cache) được cấp phát tĩnh trong SRAM. Với chuỗi ngữ cảnh 64 token qua 3 layer Transformer (kích thước ẩn $d=64$), tổng bộ đệm Key và Value tiêu thụ chính xác:
 
-$$3 \text{ layers} \times 64 \text{ tokens} \times 64 \text{ dimensions} = 12,288 \text{ bytes} \approx 12 \text{ KB}$$
+$$2 \times 3 \text{ layers} \times 64 \text{ tokens} \times 64 \text{ dimensions} = 24,576 \text{ bytes} \approx 24.5 \text{ KB}$$
 
-Hệ thống còn dư hơn 220 KB SRAM nội bộ cho bộ đệm TCP/IP của WiFi và các tác vụ FreeRTOS.
+(Gồm $12,288\text{ bytes Key Cache} + 12,288\text{ bytes Value Cache}$). Hệ thống còn dư hơn 210 KB SRAM nội bộ cho bộ đệm TCP/IP của WiFi và các tác vụ FreeRTOS.
 
 > [!NOTE]
 > Tuyệt đối không gọi `malloc` hay `free` trong vòng lặp sinh token. Điều này loại bỏ hoàn toàn nguy cơ phân mảnh bộ nhớ và rò rỉ RAM (Zero Memory Leak).

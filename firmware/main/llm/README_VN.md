@@ -33,7 +33,7 @@ $$\text{Output}[r] = \left( \sum_{c=0}^{\text{cols}-1} W[r, c] \cdot X_q[c] \rig
    static int8_t s_k_cache[LAYERS][MAX_SEQ_LEN][DIM];
    static int8_t s_v_cache[LAYERS][MAX_SEQ_LEN][DIM];
    ```
-   Với cấu hình $L=3, T=64, d=64$, toàn bộ KV-cache chỉ tiêu thụ đúng $12,288\text{ bytes}$ (~12 KB).
+   Với cấu hình $L=3, T=64, d=64$, tổng bộ đệm Key và Value tiêu thụ đúng $2 \times 3 \times 64 \times 64 = 24,576\text{ bytes}$ (~24.5 KB).
 
 3. **Bộ Lấy Mẫu Tham Lam Argmax (Greedy Sampler)**:
    Khi thiết lập nhiệt độ về $0.0$, bộ lấy mẫu sẽ luôn chọn token có logit lớn nhất $\arg\max(\text{logits})$, đảm bảo câu sinh ra luôn chính xác, mạch lạc và đúng ngữ pháp.
@@ -95,8 +95,8 @@ $$\text{Output}[r] = \left( \sum_{c=0}^{\text{cols}-1} W[r, c] \cdot X_q[c] \rig
 | Kích thước mỗi đầu | $d_{\text{head}}$ | 16 |
 | Kích thước lớp Feed-Forward | $d_{\text{ff}}$ | 128 |
 | Độ dài ngữ cảnh tối đa | $T$ | 64 |
-| Bộ nhớ KV-Cache tiêu thụ | - | 12,288 bytes (~12 KB trong SRAM) |
-| Dung lượng Flash lưu trọng số | - | ~360 KB (Flash DROM) |
+| Bộ nhớ KV-Cache tiêu thụ | - | 24,576 bytes (~24.5 KB tổng cộng K + V) |
+| Dung lượng Flash lưu trọng số | - | 118,784 tham số (~119 KB INT8 trong Flash DROM) |
 
 ---
 
