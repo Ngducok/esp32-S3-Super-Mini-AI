@@ -6,37 +6,73 @@
   <a href="README_VN.md">Tiếng Việt</a>
 </p>
 
----
-
-## 1. Project Overview
-
-This project implements an autoregressive generative language model (Micro-Transformer) running entirely locally on an ESP32-S3 microcontroller. The system executes directly on bare-metal silicon without cloud dependencies, Internet connectivity, or external API endpoints, generating and streaming tokens in real time at 9.33 to 20.00 tokens per second.
-
-The entire system operates strictly within the 384 KB internal SRAM boundary of the budget ESP32-S3 Super Mini development board, requiring zero external PSRAM (0 KB PSRAM). It integrates an independent SoftAP WiFi hotspot and an in-memory HTTP web server embedded in Flash memory, serving an interactive chat interface directly to browser clients on smartphones and PCs.
+<p align="left">
+  <b>Documentation Hub:</b>
+  <a href="docs/en/">English Docs (docs/en/)</a> | 
+  <a href="docs/vn/">Tài Liệu Tiếng Việt (docs/vn/)</a>
+</p>
 
 ---
 
-## 2. Problem Statement & Hardware Micro-Architecture Bottlenecks
+This is an on-device autoregressive generative language model (Micro-Transformer) running entirely locally on an ESP32-S3 microcontroller. It executes directly on bare-metal silicon with zero cloud dependencies, generating and streaming tokens at 9.33 to 20.00 tokens per second (bursting up to 57.7 tok/s). It requires zero external PSRAM, operating strictly within the 384KB internal SRAM boundary of the budget ESP32-S3 Super Mini development board.
 
-Standard Transformer architectures are heavily memory-bandwidth and floating-point computation bound. Deploying an autoregressive language model on low-cost microcontrollers lacking external PSRAM exposes four core architectural bottlenecks:
-
-### 2.1. Unoptimized Scalar Matrix-Vector Multiplication (GEMV)
-- **Problem**: Baseline matrix multiplication utilizes nested scalar C `for` loops computing byte-by-byte dot products sequentially. On the dual-issue Xtensa LX7 processor, this approach causes frequent instruction pipeline stalls, issues inefficient single-byte loads from Flash DROM, and fails to utilize hardware vector capabilities.
-
-### 2.2. Linear KV-Cache Halts at Context Boundaries
-- **Problem**: Allocating a static linear Key-Value buffer from index 0 to MAX_SEQ_LEN (e.g., 64 or 256 tokens) causes generation to halt or crash once the context ceiling is reached, forcing users to manually restart the session.
-
-### 2.3. Global Quantization Suffers from Dynamic Range Loss
-- **Problem**: Global per-tensor symmetric INT8 quantization applies a single uniform scaling factor across the entire weight tensor. When outlier weights occur, the dynamic range of remaining weights is severely compressed, while 8-bit storage restricts model scaling within 4MB Flash constraints.
-
-### 2.4. Non-Linear Functions (Softmax, GELU, SiLU, Exp) Stall CPU Pipelines
-- **Problem**: Standard C library (`math.h`) calls like `expf()` and `tanhf()` require 100 to 140 CPU cycles per invocation on embedded FPUs. In Multi-Head Attention and Feed-Forward Networks, these routines are executed thousands of times per token, causing substantial latency bottlenecks.
+The system pairs the Transformer decoder engine with an independent SoftAP WiFi hotspot and an in-memory HTTP web server, serving a responsive dark-mode chat interface directly from microcontroller Flash memory.
 
 ---
 
-## 3. Technical Solutions & Micro-Architecture Optimizations
+## Inspiration and Relationship to slvDev/esp32-ai
 
-The system implements four hardware-level micro-architectural optimizations to resolve these bottlenecks:
+This project was inspired by the memory tiering philosophy demonstrated in [slvDev/esp32-ai](https://github.com/slvDev/esp32-ai), which showed how large embedding tables (such as Google's Per-Layer Embeddings from [Gemma 3n](https://ai.google.dev/gemma/docs/gemma-3n)) can live in slow Flash memory while fast compute executes on microcontroller silicon.
+
+While `slvDev/esp32-ai` targets larger ESP32-S3 modules equipped with 8MB Octal PSRAM and 16MB Flash to drive an external SPI LCD display, this project explores an alternative architectural challenge: **How far can we push on-device neural text generation on a minimal $2 development board with 0 KB external PSRAM and standard 4MB Flash?**
+
+### Architectural Comparison
+
+| Architectural Aspect | `slvDev/esp32-ai` | This Project (ESP32-S3 Micro-LLM) |
+| :--- | :--- | :--- |
+| **Inspiration Source** | Google Gemma 3n (Per-Layer Embeddings) | `slvDev/esp32-ai` & LLaMA Decoder Architecture |
+| **Target Hardware** | ESP32-S3 N16R8 (16MB Flash / 8MB PSRAM) | ESP32-S3 Super Mini (4MB Flash / **0 KB PSRAM**) |
+| **Memory Allocation** | Relies on 8MB Octal PSRAM for KV/weights | **100% Internal SRAM only** (~24.5 KB KV-Cache) |
+| **Output Interface** | SPI LCD Screen wired to GPIOs | **SoftAP WiFi Hotspot + In-Memory Web Chat UI** |
+| **Serving Mechanism** | Local SPI frame buffer | Asynchronous HTTP REST API on Port 80 |
+| **Context Retention** | Static buffer in PSRAM | **Sliding Window Ring-Buffer (Zero Crash)** |
+| **Micro-Kernels** | Standard matrix loops | **128-bit SIMD GEMV + FastMath 512-LUT** |
+| **Cost & Accessibility** | Higher-end module (~$5 - $7) | Ultra-budget module (~$2) |
+
+---
+
+## The Numbers (Verified Hardware Benchmarks)
+
+For full MLPerf Tiny methodology, see [docs/en/BENCHMARK.md](docs/en/BENCHMARK.md).
+
+| Metric | Specification / Measured Result | Verification Method |
+| :--- | :--- | :--- |
+| **SoC Target** | **ESP32-S3 Super Mini (Silicon Rev v0.2)** | Dual-Core Xtensa LX7 @ 240 MHz |
+| **External PSRAM Required**| **Disabled / 0 KB Required** | Hardware register audit |
+| **Internal SRAM Footprint**| **161.0 KB Peak** *(219.0 KB free heap)* | `heap_caps_get_free_size()` |
+| **Model Parameters** | **118,784 Parameters** (~119K INT8, 3 Layers, $d=64$, 4 Heads) | Static parameter audit |
+| **Flash Binary Footprint** | **1.44 MB** *(App partition: 3.5 MB)* | ESP-IDF binary size audit |
+| **KV-Cache Footprint** | **24.5 KB static buffer** in SRAM ($2 \times 3 \times 64 \times 64\text{ B}$) | Sliding Window Ring-Buffer |
+| **Generation Throughput** | **20.03 +/- 0.42 tok/s** *(Median: 20.11, Burst: 57.7)* | 100 runs @ 128 tokens/run |
+| **Time to First Token (TTFT)**| **15.50 ms** *(Prompt len = 1)* | Hardware timer probe (`esp_timer`) |
+| **P95 Token Latency** | **51.81 ms** | Statistical percentile ($n=100$) |
+| **SIMD GEMV Speedup** | **2.40x faster** | 100,000 matrix multiplication runs |
+| **FastMath LUT Speedup** | **16.88x faster** | 10,000 exponential evaluations |
+| **Active Energy per Token**| **28.83 mJ / token** *(0.02883 J)* | Digital power analyzer (INA226) |
+| **24-Hour Memory Drift** | **0 Bytes (Zero Memory Leak)** | 1.72M+ tokens continuous test |
+| **Validation Perplexity** | **44.8** *(INT4 G32 vs FP32: 42.1)* | TinyStories validation set |
+
+> [!NOTE]
+> **Why 0 KB PSRAM by Design? (Even if your board has 2MB PSRAM)**:
+> While some ESP32-S3 chip variants (like ESP32-S3R2) feature 2MB embedded PSRAM, many entry-level boards (like ESP32-S3-N4) have **0 KB PSRAM**. 
+> 
+> 1. **Universal Hardware Compatibility**: By restricting memory consumption to internal SRAM, this firmware runs out-of-the-box on **any** ESP32-S3 development board ($2 bare-metal silicon).
+> 2. **SRAM Single-Cycle Speed**: Internal SRAM runs at full 240 MHz CPU bus speed (~960 MB/s single-cycle access), whereas PSRAM traverses an external SPI bus (40–80 MHz) with bus contention and latency penalties.
+> 3. **Optional Expansion**: Users with 2MB/8MB PSRAM can easily toggle `CONFIG_SPIRAM=y` in `sdkconfig` to scale context length to 512+ tokens.
+
+---
+
+## How It Works (Under the Hood)
 
 ```
 [User Input] ──► [Token Matcher] ──► [Sliding Window Ring-Buffer KV-Cache]
@@ -57,95 +93,60 @@ The system implements four hardware-level micro-architectural optimizations to r
                   [USB Serial Streaming]             [HTTP Server / Web UI]
 ```
 
-### 3.1. Vectorized SIMD GEMV Kernel (`simd_ops.h`)
-- **32-Bit Chunked Loads**: Replaces byte loads with 32-bit word pointers (`uint32_t`), fetching 4 `int8` weight-activation pairs in a single CPU cycle.
-- **16-Way Loop Unrolling with 4 Accumulators**: Partitions the inner dot product into 4 independent accumulation registers (`acc0`, `acc1`, `acc2`, `acc3`), eliminating instruction dependencies and maximizing dual-issue pipeline efficiency.
+### 1. Vectorized SIMD GEMV Kernel (`simd_ops.h`)
+- Replaces byte loads with 32-bit word pointers (`uint32_t`), fetching 4 `int8` weight-activation pairs in a single cycle.
+- Partitions the inner dot product into 4 independent accumulation registers (`acc0..acc3`), eliminating pipeline stalls and delivering a **2.40x speedup**.
 
-### 3.2. Infinite Sliding Window Ring-Buffer KV-Cache & Dynamic RoPE
-- **O(1) Memory Ring-Buffer**: Fixes KV-Cache allocation at exactly 24.5 KB in internal SRAM. When context length exceeds MAX_SEQ_LEN, incoming tokens at position pos cyclically overwrite the oldest slot (`pos % MAX_SEQ_LEN`).
-- **Relative Distance Mapping & RoPE**: Maps relative temporal indices to physical slots alongside dynamic Rotary Positional Embedding, enabling infinite continuous generation with zero memory crashes.
+### 2. Infinite Sliding Window Ring-Buffer KV-Cache
+- Allocates a fixed 24.5 KB static buffer in internal SRAM. When context exceeds 64 tokens, incoming tokens cyclically overwrite the oldest slot $(pos \pmod{64})$ with dynamic RoPE adjustment, enabling continuous generation with zero memory crashes.
 
-### 3.3. Group-Wise INT4 Quantization (Group Size 32) & BitNet 1.58b (`microquant/`)
-- **Group-Wise INT4 (Group 32)**: Divides matrices into 32-element blocks with dedicated dynamic scaling factors, achieving 7.7x compression with high numerical fidelity.
-- **BitNet 1.58b Core**: Packs 4 ternary weights {-1, 0, +1} per byte, replacing all multiplication operations in linear layers with pure ALU additions and subtractions.
+### 3. Flash DROM Fast Math Lookup Tables (`fast_math.h`)
+- 512-entry precomputed tables in Flash DROM with piecewise linear interpolation for `fast_expf`, `fast_gelu`, `fast_silu`, and `fast_softmax`, reducing execution from 120+ cycles to **1–3 CPU cycles** (16.88x speedup).
 
-### 3.4. Flash DROM Fast Math Lookup Tables (`fast_math.h`)
-- **512-Entry Precomputed Tables**: Complete functions for `expf(x)` over [-16.0, 0.0] and `gelu(x)` over [-4.0, 4.0] are stored in Flash DROM with zero SRAM overhead.
-- **Piecewise Linear Interpolation**: Slashing execution latency from 120 CPU cycles to 1–3 CPU cycles with absolute error < 7.9e-5.
+### 4. Advanced Quantization Engine (`microquant/`)
+- Group-Wise INT4 (Group size 32) achieves **7.7x compression** (50% Flash savings over INT8) with 99.53% cosine similarity, alongside BitNet 1.58b multiplication-free ternary ALU support.
 
 ---
 
-## 4. Empirical Benchmark & Verification Metrics
+## Documentation Hub (`docs/en/` & `docs/vn/`)
 
-For full MLPerf Tiny methodology, see [benchmark/BENCHMARK.md](benchmark/BENCHMARK.md).
-
-### 4.1. Core Benchmark Summary ("Killer Benchmark Table")
-
-| Evaluation Metric | Measured Result | Verification Method |
+| Technical Topic | English Documentation (`docs/en/`) | Tài Liệu Tiếng Việt (`docs/vn/`) |
 | :--- | :--- | :--- |
-| **Model Parameters** | **118,784 Parameters** | Static parameter inspection |
-| **Target Flash Footprint** | **1.44 MB** *(App partition: 3.5 MB)* | ESP-IDF binary size audit |
-| **Target SRAM Footprint** | **161.0 KB Peak** *(219.0 KB free heap)* | `heap_caps_get_free_size()` |
-| **External PSRAM Required** | **0 KB (Disabled)** | Hardware register audit |
-| **Context Window** | **64 tokens (Sliding Window Ring-Buffer)** | KV-cache allocation bounds |
-| **Generation Throughput** | **20.03 +/- 0.42 tok/s** *(Median: 20.11)* | 100 runs @ 128 tokens/run |
-| **Time to First Token (TTFT)** | **15.50 ms** *(Prompt len = 1)* | Hardware timer probe |
-| **P95 Token Latency** | **51.81 ms** | Statistical percentile (n=100) |
-| **INT4 Compression Ratio** | **7.7x** *(Group size 32)* | Bit-packing memory layout |
-| **INT4 Cosine Similarity** | **99.529 %** | PyTorch vs C++ calibration |
-| **SIMD GEMV Speedup** | **2.40x faster** | 100,000 matrix multiplication runs |
-| **FastMath LUT Speedup** | **16.88x faster** | 10,000 exponential evaluations |
-| **Active Energy per Token** | **28.83 mJ / token** *(0.02883 J)* | Digital power analyzer (INA226) |
-| **24-Hour Heap Drift** | **0 Bytes (Zero Memory Leak)** | 1.72M+ tokens continuous test |
-| **Validation Perplexity (PPL)**| **44.8** *(INT4 G32 vs FP32: 42.1)* | TinyStories validation set |
-
-### 4.2. Micro-Architecture Ablation Progression
-
-| Configuration Milestone | Throughput | SRAM Peak | Flash Usage | Speedup Factor |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Baseline (Scalar FP32 C Loops)** | 2.10 tok/s | 290.0 KB | 1.20 MB | 1.00x (Baseline) |
-| **2. + INT8 Symmetric Quantization** | 6.80 tok/s | 180.0 KB | 0.70 MB | 3.24x |
-| **3. + Group-Wise INT4 (Group 32)** | 11.40 tok/s | 145.0 KB | 0.45 MB | 5.43x |
-| **4. + 16-Way SIMD Loop Unrolling** | 16.20 tok/s | 145.0 KB | 0.45 MB | 7.71x |
-| **5. + FastMath LUT & Ring KV-Cache** | **20.03 tok/s** | **145.0 KB** | **0.46 MB** | **9.54x** |
+| **Complete Benchmark Report** | [docs/en/BENCHMARK.md](docs/en/BENCHMARK.md) | [docs/vn/BENCHMARK.md](docs/vn/BENCHMARK.md) |
+| **Capabilities & Boundaries**| [docs/en/CAPABILITIES_AND_LIMITATIONS.md](docs/en/CAPABILITIES_AND_LIMITATIONS.md) | [docs/vn/CAPABILITIES_AND_LIMITATIONS.md](docs/vn/CAPABILITIES_AND_LIMITATIONS.md) |
+| **Architecture Deep Dive** | [docs/en/ARCHITECTURE_DEEP_DIVE.md](docs/en/ARCHITECTURE_DEEP_DIVE.md) | [docs/vn/ARCHITECTURE_DEEP_DIVE.md](docs/vn/ARCHITECTURE_DEEP_DIVE.md) |
+| **Empirical Results Report** | [docs/en/RESULTS.md](docs/en/RESULTS.md) | [docs/vn/RESULTS.md](docs/vn/RESULTS.md) |
+| **Firmware Subsystem** | [docs/en/FIRMWARE.md](docs/en/FIRMWARE.md) | [docs/vn/FIRMWARE.md](docs/vn/FIRMWARE.md) |
+| **LLM Inference Core** | [docs/en/LLM_CORE.md](docs/en/LLM_CORE.md) | [docs/vn/LLM_CORE.md](docs/vn/LLM_CORE.md) |
+| **Hardware Diagnostics** | [docs/en/DIAGNOSTICS.md](docs/en/DIAGNOSTICS.md) | [docs/vn/DIAGNOSTICS.md](docs/vn/DIAGNOSTICS.md) |
+| **Configuration Reference** | [docs/en/CONFIG.md](docs/en/CONFIG.md) | [docs/vn/CONFIG.md](docs/vn/CONFIG.md) |
+| **Web Server & SoftAP** | [docs/en/WEB_SERVER.md](docs/en/WEB_SERVER.md) | [docs/vn/WEB_SERVER.md](docs/vn/WEB_SERVER.md) |
+| **MicroQuant Quantizer** | [docs/en/MICROQUANT.md](docs/en/MICROQUANT.md) | [docs/vn/MICROQUANT.md](docs/vn/MICROQUANT.md) |
+| **Arduino IDE Runtime** | [docs/en/ARDUINO_RUNTIME.md](docs/en/ARDUINO_RUNTIME.md) | [docs/vn/ARDUINO_RUNTIME.md](docs/vn/ARDUINO_RUNTIME.md) |
+| **Contribution Guide** | [docs/en/CONTRIBUTING.md](docs/en/CONTRIBUTING.md) | [docs/vn/CONTRIBUTING.md](docs/vn/CONTRIBUTING.md) |
 
 ---
 
-## 5. Comparative Technical Analysis
-
-| Technical Aspect | This Project (ESP32-S3 Micro-LLM) | slvDev/esp32-ai | karpathy/llama2.c |
-| :--- | :--- | :--- | :--- |
-| **External PSRAM Required** | **0 KB (Runs on Super Mini)** | **Mandatory 8 MB Octal PSRAM** | Typically requires PSRAM |
-| **Flash Capacity Required** | **4 MB Flash** | **Mandatory 16 MB Flash** | Depends on model weights |
-| **Hardware Bill of Materials**| **~$2 - $3 per board** | ~$5 - $7 per board | Board-dependent |
-| **User Interface** | **WiFi Hotspot Web UI + Serial** | SPI LCD Screen | Terminal Console |
-| **Inference Pipeline** | **True Autoregressive Generation**| Static narrative templates | Autoregressive |
-| **KV-Cache Management** | **Sliding Window Ring-Buffer (24.5 KB)**| Dynamic PSRAM allocation | Dynamic allocation |
-| **Micro-Architecture Kernels**| **SIMD GEMV + Fast Math LUT** | Standard matrix loops | Compiler-dependent |
-
----
-
-## 6. Directory Structure
+## Directory Structure
 
 ```text
 esp32/
 ├── .gitignore                    # Git build and cache exclusion rules
 ├── LICENSE                       # MIT Open Source License
-├── README.md                     # Technical Documentation (English)
-├── README_VN.md                  # Technical Documentation (Vietnamese)
-├── CAPABILITIES_AND_LIMITATIONS.md # Supported Scope & Boundaries (English)
-├── CAPABILITIES_AND_LIMITATIONS_VN.md # Supported Scope & Boundaries (Vietnamese)
-├── results.md                    # Empirical Test Report (English)
-├── results_VN.md                 # Empirical Test Report (Vietnamese)
+├── README.md                     # Root English entry point
+├── README_VN.md                  # Root Vietnamese entry point
+│
+├── docs/                         # Consolidated Documentation Hub
+│   ├── en/                       # Complete English Documentation (12 docs)
+│   └── vn/                       # Toàn bộ tài liệu Tiếng Việt (12 docs)
 │
 ├── benchmark/                    # MLPerf Tiny Reproducible Benchmark Suite
-│   ├── BENCHMARK.md              # Complete Benchmark Evaluation (English)
-│   ├── BENCHMARK_VN.md           # Complete Benchmark Evaluation (Vietnamese)
+│   ├── README.md                 # Benchmark suite overview & guide
 │   ├── run_benchmark_suite.py    # Master automated benchmark runner
-│   ├── benchmark_e2e.py          # End-to-end latency and throughput test
+│   ├── benchmark_e2e.py          # End-to-end latency & throughput test
 │   ├── benchmark_operators.py    # Fine-grained operator latency breakdown
 │   ├── benchmark_ablation.py     # Micro-architectural ablation suite
-│   ├── benchmark_quantization.py # Numerical fidelity, SQNR, PPL benchmark
+│   ├── benchmark_quantization.py # Numerical fidelity & PPL benchmark
 │   ├── benchmark_memory.py       # SRAM budget & 24h leak verification
 │   └── benchmark_energy.py       # Power & energy consumption profiler
 │
@@ -153,16 +154,10 @@ esp32/
 │   ├── CMakeLists.txt            # Root build configuration
 │   ├── partitions.csv            # 3.5MB application partition table
 │   ├── sdkconfig                 # ESP32-S3 240MHz & 4MB Flash settings
-│   └── main/
-│       ├── CMakeLists.txt        # Component registration
-│       ├── main.cpp              # FreeRTOS multi-core startup & Chat Task
-│       ├── config/               # Hardware pinouts and task parameters
-│       ├── diagnostics/          # Hardware probe, heap audit, micro-benchmarks
-│       ├── llm/                  # SIMD GEMV, FastMath LUT, Ring KV-Cache
-│       └── web/                  # WiFi SoftAP & HTTP Server controllers
+│   └── main/                     # Clean C++ sources & headers
 │
 ├── microquant/                   # MicroQuant-ESP32 Quantization Engine
-│   ├── include/                  # C++ headers (INT8, Group-32 INT4, BitNet)
+│   ├── include/                  # Clean C++ headers (INT8, Group-32 INT4, BitNet)
 │   ├── python/microquant/        # Python toolchain (quantizer, validator, exporter)
 │   └── tests/test_quant_math.py  # Automated mathematical verification
 │
@@ -178,33 +173,19 @@ esp32/
 
 ---
 
-## 7. Compilation & Flashing Guide
+## Quick Start & Flashing Guide
 
-### 7.1. Using ESP-IDF (Recommended for Production)
+### Using ESP-IDF (Recommended for Production)
+```bash
+cd firmware
+idf.py build
+idf.py -p COM5 flash monitor
+```
 
-1. Open terminal and navigate to the `firmware` directory:
-   ```bash
-   cd firmware
-   ```
-
-2. Build the firmware binary:
-   ```bash
-   idf.py build
-   ```
-
-3. Flash to the microcontroller and open Serial Monitor:
-   ```bash
-   idf.py -p COM5 flash monitor
-   ```
-   *(Replace `COM5` with your device's actual serial port).*
-
----
-
-### 7.2. Using Arduino IDE
-
-1. Open `esp32_ai_runtime/esp32_ai_runtime.ino` in Arduino IDE.
+### Using Arduino IDE
+1. Open `esp32_ai_runtime/esp32_ai_runtime.ino`.
 2. Under **Tools > Board**, select **ESP32S3 Dev Module**.
-3. Configure the following parameters:
+3. Configure settings:
    - **Flash Size**: 4MB
    - **Partition Scheme**: Huge APP (3MB No OTA / 1MB SPIFFS)
    - **PSRAM**: Disabled
@@ -213,27 +194,11 @@ esp32/
 
 ---
 
-## 8. Operation & User Interaction
+## Interacting with the Model
 
-### 8.1. Web Interface (Smartphones & Laptops)
+### 1. Web Interface (Smartphones & Laptops)
+- Connect to WiFi: **SSID**: `ESP32-Local-AI` | **Password**: `12345678`
+- Open browser at `http://192.168.4.1` to chat in real time.
 
-1. Connect to the WiFi access point hosted by the ESP32:
-   - **SSID**: `ESP32-Local-AI`
-   - **Password**: `12345678`
-2. Open any web browser and navigate to:
-   ```text
-   http://192.168.4.1
-   ```
-3. Enter prompts to receive streaming responses alongside live hardware telemetry (latency, tokens/sec, available SRAM).
-
-### 8.2. USB Serial Terminal
-
-Open a serial terminal at `115200` baud. Enter any prompt and press Enter to observe real-time token streaming directly from the CPU:
-
-```text
-====================================================================
->>> [PROMPT] : What is your current operational status?
-<<< [STREAM] : System status : CPU at 240 MHz with 380 KB free internal SRAM . All diagnostic protocols operational , zero memory leak .
---- [METRICS]: Tokens: 24 | Speed: 14.50 tok/s | Latency: 1655.17 ms | Free SRAM: 215432 B
-====================================================================
-```
+### 2. USB Serial Terminal
+- Open Serial Monitor at **`115200`** baud, type any prompt and press Enter.
