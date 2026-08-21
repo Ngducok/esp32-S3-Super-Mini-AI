@@ -59,10 +59,7 @@ Nhằm đảm bảo tính khách quan và minh bạch cho cộng đồng nghiên
 ### 3.3. Tầm Nhìn Ngữ Cảnh Hiệu Dụng (32–64 Tokens)
 - **Ngữ cảnh chú ý**: Mặc dù cơ chế Ring-Buffer cho phép sinh văn bản liên tục vô hạn không crash, khả năng duy trì ngữ cảnh logic hiệu quả nhất của mô hình nằm trong phạm vi 32–64 token gần nhất.
 
-### 3.4. Giới Hạn Về Ngôn Ngữ (Chủ yếu Tiếng Anh)
-- **Ngôn ngữ mục tiêu**: Trọng số và từ điển hiện tại được huấn luyện và lượng tử hóa cho tiếng Anh (English). Chưa hỗ trợ bộ từ vựng tiếng Việt có dấu đầy đủ.
-
-### 3.5. Chưa Tích Hợp Ngoại Vi Âm Thanh (Microphone I2S) Mặc Định
+### 3.4. Chưa Tích Hợp Ngoại Vi Âm Thanh (Microphone I2S) Mặc Định
 - **Giao tiếp hiện tại**: Hệ thống giao tiếp qua Web WiFi và USB Serial; chưa nối sẵn module mic I2S INMP441 hoặc loa DAC MAX98357A để nhận diện giọng nói trực tiếp.
 
 ---
@@ -80,12 +77,3 @@ Nhằm đảm bảo tính khách quan và minh bạch cho cộng đồng nghiên
 | **Phạm vi kiến thức** | **Micro-Domain / Edge IoT** | Vừa phải | Toàn diện thế giới |
 | **Giải toán / Viết code** | **Không** | Hạn chế | Rất tốt |
 | **Dung lượng từ vựng** | **128 Tokens** | 32.000 Tokens | 100.000+ Tokens |
-
----
-
-## 5. Các Ứng Dụng Thực Tế Phù Hợp Nhất
-
-1. **Trợ Lý Thông Minh Cho Thiết Bị Edge IoT Offline**: Điều khiển nhà thông minh, thiết bị nhúng không phụ thuộc mạng.
-2. **Chẩn Đoán Trạng Thái Phần Cứng Vi Điều Khiển**: Tự động phân tích và báo cáo tình trạng CPU, bộ nhớ, nhiệt độ theo dạng ngôn ngữ tự nhiên.
-3. **Mô-đun Bộ Não Cho Robot Giá Rẻ**: Nhận lệnh điều khiển và phản hồi hội thoại trực tiếp cho các hệ thống Robotics và STEM.
-4. **Nghiên Cứu & Giảng Dạy TinyML**: Làm mẫu kiến trúc tối ưu vi kiến trúc (Xtensa SIMD, FastMath LUT, Group-wise Quantization, Ring-Buffer KV-cache) trên vi điều khiển.

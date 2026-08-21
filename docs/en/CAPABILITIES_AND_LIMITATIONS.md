@@ -59,10 +59,7 @@ To ensure clear academic and industrial evaluation, this document explicitly def
 ### 3.3. Semantic Attention Depth Bound (32–64 Effective Tokens)
 - **Effective Context**: While the Ring-Buffer allows infinite token generation without crashing, the model's semantic attention span is focused on the most recent 32–64 tokens within its sliding window. Earlier conversational turns are cyclically evicted from the attention horizon.
 
-### 3.4. English Language Focus
-- **Language Domain**: The tokenizer, vocabulary table, and pre-trained weights are optimized exclusively for English text. Complex multilingual or accented scripts (such as accented Vietnamese) are currently out of scope.
-
-### 3.5. Acoustic Hardware Peripherals Not Integrated by Default
+### 3.4. Acoustic Hardware Peripherals Not Integrated by Default
 - **Audio I/O**: The current firmware interfaces via WiFi SoftAP Web UI and USB Serial UART. It does not include digital I2S microphone (INMP441) wake-word capture or I2S DAC (MAX98357A) speech synthesis out of the box.
 
 ---
@@ -80,12 +77,3 @@ To ensure clear academic and industrial evaluation, this document explicitly def
 | **General Knowledge Breadth** | **Domain-Specific / Micro** | Moderate | World-Scale Encyclopedic |
 | **Complex Math / Coding** | **No** | Limited | Yes |
 | **Vocabulary Size** | **128 Tokens** | 32,000 Tokens | 100,000+ Tokens |
-
----
-
-## 5. Recommended Real-World Use Cases
-
-1. **Edge AI & Offline IoT Controllers**: Operating autonomous smart assistants, home appliance interfaces, and voice/serial command parsers without cloud reliance.
-2. **On-Chip Diagnostics & Telemetry**: Microcontroller self-introspection, reporting CPU loads, free memory, and system diagnostics conversationally.
-3. **Embedded Robotics & Physical Actuation**: Offline robot brain module for sensor-to-action reasoning on low-power battery-operated robotics.
-4. **Academic & Research TinyML**: Demonstrating hardware micro-architecture optimization (Xtensa SIMD, LUTs, Group-wise Quantization, Ring KV-caches) on edge silicon.
