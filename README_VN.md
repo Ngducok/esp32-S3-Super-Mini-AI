@@ -240,8 +240,8 @@ Tầm nhìn nghiên cứu dài hạn là tích hợp các ngoại vi xử lý â
 
 ## Thông Tin Tác Giả & Liên Hệ
 
-- **Tác giả**: Duc Nguyen (Nguyễn Đức)
-- **Vai trò**: Sinh viên năm 3 ngành Robotics & AI (Undergraduate), Viện 3I, Đại học UEH
+- **Tác giả**: Dustin Nguyen
+- **Vai trò**: Sinh viên năm 3 ngành Robotics & AI
 - **Email**: [dustinoki.dev@gmail.com](mailto:dustinoki.dev@gmail.com)
 
 > [!NOTE]
