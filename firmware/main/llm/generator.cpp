@@ -84,14 +84,15 @@ GenerationStats Generator::generateStream(const char* prompt,
 
     // 3. Autoregressive Decode Loop (Sliding Window Continuous Generation)
     uint32_t tokens_gen = 0;
-    uint8_t recent_tokens[8] = {0};
+    uint8_t recent_tokens[24] = {0};
     uint32_t recent_idx = 0;
 
     while (tokens_gen < max_new_tokens) {
-        // Apply lightweight repetition penalty on recently generated tokens
-        for (uint32_t r = 0; r < 8; r++) {
-            if (recent_tokens[r] > 0 && recent_tokens[r] < Weights::VOCAB_SIZE) {
-                logits[recent_tokens[r]] -= 1.2f;
+        // Frequency-based repetition penalty over recent token window
+        for (uint32_t r = 0; r < 24; r++) {
+            uint8_t tok = recent_tokens[r];
+            if (tok > 0 && tok < Weights::VOCAB_SIZE) {
+                logits[tok] -= 2.2f;
             }
         }
 
@@ -115,7 +116,7 @@ GenerationStats Generator::generateStream(const char* prompt,
             }
             tokens_gen++;
 
-            recent_tokens[recent_idx % 8] = next_token;
+            recent_tokens[recent_idx % 24] = next_token;
             recent_idx++;
         }
 

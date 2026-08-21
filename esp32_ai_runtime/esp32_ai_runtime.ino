@@ -235,12 +235,12 @@ void handleChatAPI() {
 
     String generatedReply = "";
     uint32_t tokens_gen = 0;
-    uint8_t recent[8] = {0};
+    uint8_t recent[24] = {0};
 
     while (tokens_gen < 48) {
-        for (uint32_t r = 0; r < 8; r++) {
+        for (uint32_t r = 0; r < 24; r++) {
             if (recent[r] > 0 && recent[r] < LLM::Weights::VOCAB_SIZE) {
-                logits[recent[r]] -= 1.2f;
+                logits[recent[r]] -= 2.2f;
             }
         }
 
@@ -254,7 +254,7 @@ void handleChatAPI() {
             if (generatedReply.length() > 0 && !is_punct) generatedReply += " ";
             generatedReply += tok_str;
             tokens_gen++;
-            recent[tokens_gen % 8] = next_tok;
+            recent[tokens_gen % 24] = next_tok;
         }
 
         forwardToken(next_tok, cur_pos++, logits);
