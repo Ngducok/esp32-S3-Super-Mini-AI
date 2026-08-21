@@ -182,3 +182,11 @@ idf.py -p COM5 flash monitor
 
 ### 2. Cổng Serial Terminal
 - Mở Serial Monitor tốc độ Baud **`115200`**, gõ câu hỏi bất kỳ và nhấn Enter.
+
+---
+
+## Tác Giả & Liên Hệ
+
+- **Tác giả**: Dustin Nguyen
+- **Vai trò**: Sinh viên năm 3 ngành Robotics & AI
+- **Email**: [dustinoki.dev@gmail.com](mailto:dustinoki.dev@gmail.com)

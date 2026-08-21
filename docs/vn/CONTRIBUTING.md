@@ -2,7 +2,7 @@
 
 <p align="left">
   <b>Ngôn ngữ:</b> 
-  <a href="CONTRIBUTING.md">English</a> | 
+  <a href="../en/CONTRIBUTING.md">English</a> | 
   <a href="CONTRIBUTING_VN.md">Tiếng Việt</a>
 </p>
 

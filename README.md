@@ -202,3 +202,11 @@ idf.py -p COM5 flash monitor
 
 ### 2. USB Serial Terminal
 - Open Serial Monitor at **`115200`** baud, type any prompt and press Enter.
+
+---
+
+## Author & Contact
+
+- **Author**: Dustin Nguyen
+- **Role**: 3rd-year Undergraduate Student in Robotics & AI
+- **Email**: [dustinoki.dev@gmail.com](mailto:dustinoki.dev@gmail.com)
