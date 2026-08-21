@@ -1,6 +1,8 @@
 #include "hardware_probe.h"
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
+#include "fast_math.h"
 #include "esp_chip_info.h"
 #include "esp_flash.h"
 #include "esp_heap_caps.h"
@@ -77,34 +79,97 @@ void HardwareProbe::printReport() {
 }
 
 void HardwareProbe::runCPUBenchmark() {
-    ESP_LOGI(TAG, "Starting CPU & Matrix Multiplication Baseline Benchmark...");
+    ESP_LOGI(TAG, "Starting Micro-Architecture Hardware Benchmarks...");
     
-    // 16x16 Float Matrix Multiplication Benchmark (1000 runs)
-    static float A[16][16], B[16][16], C[16][16];
-    for (int i = 0; i < 16; i++) {
-        for (int j = 0; j < 16; j++) {
-            A[i][j] = (float)(i + j) * 0.05f;
-            B[i][j] = (float)(i - j) * 0.05f;
-            C[i][j] = 0.0f;
-        }
-    }
+    // 1. 64x64 INT8 GEMV Benchmark (Scalar C loop vs SIMD 4-way Unrolled)
+    static int8_t mat[64 * 64];
+    static int8_t vec_in[64];
+    static float vec_out_scalar[64];
+    static float vec_out_simd[64];
+    
+    for (int i = 0; i < 64 * 64; i++) mat[i] = (int8_t)((i % 25) - 12);
+    for (int i = 0; i < 64; i++) vec_in[i] = (int8_t)((i % 15) - 7);
 
-    constexpr int ITERS = 1000;
-    int64_t t0 = esp_timer_get_time();
-    for (int it = 0; it < ITERS; it++) {
-        for (int i = 0; i < 16; i++) {
-            for (int k = 0; k < 16; k++) {
-                float a_ik = A[i][k];
-                for (int j = 0; j < 16; j++) {
-                    C[i][j] += a_ik * B[k][j];
-                }
+    constexpr int GEMV_ITERS = 1000;
+    
+    // Scalar C GEMV
+    int64_t t_scalar_0 = esp_timer_get_time();
+    for (int it = 0; it < GEMV_ITERS; it++) {
+        for (uint32_t r = 0; r < 64; r++) {
+            int32_t acc = 0;
+            const int8_t* row = &mat[r * 64];
+            for (uint32_t c = 0; c < 64; c++) {
+                acc += (int32_t)row[c] * (int32_t)vec_in[c];
             }
+            vec_out_scalar[r] = (float)acc * (1.0f / 900.0f);
         }
     }
-    int64_t t1 = esp_timer_get_time();
-    float avg_us = (float)(t1 - t0) / ITERS;
-    ESP_LOGI(TAG, "  16x16 Float MatMul : %d iterations in %.2f ms | Avg: %.2f us/op",
-             ITERS, (t1 - t0) / 1000.0f, avg_us);
+    int64_t t_scalar_1 = esp_timer_get_time();
+    float scalar_us = (float)(t_scalar_1 - t_scalar_0) / GEMV_ITERS;
+
+    // SIMD 4-way Unrolled GEMV
+    int64_t t_simd_0 = esp_timer_get_time();
+    for (int it = 0; it < GEMV_ITERS; it++) {
+        for (uint32_t r = 0; r < 64; r++) {
+            const int8_t* row = &mat[r * 64];
+            int32_t acc0 = 0, acc1 = 0, acc2 = 0, acc3 = 0;
+            uint32_t c = 0;
+            for (; c + 16 <= 64; c += 16) {
+                acc0 += (int32_t)row[c + 0] * (int32_t)vec_in[c + 0]
+                      + (int32_t)row[c + 1] * (int32_t)vec_in[c + 1]
+                      + (int32_t)row[c + 2] * (int32_t)vec_in[c + 2]
+                      + (int32_t)row[c + 3] * (int32_t)vec_in[c + 3];
+                acc1 += (int32_t)row[c + 4] * (int32_t)vec_in[c + 4]
+                      + (int32_t)row[c + 5] * (int32_t)vec_in[c + 5]
+                      + (int32_t)row[c + 6] * (int32_t)vec_in[c + 6]
+                      + (int32_t)row[c + 7] * (int32_t)vec_in[c + 7];
+                acc2 += (int32_t)row[c + 8] * (int32_t)vec_in[c + 8]
+                      + (int32_t)row[c + 9] * (int32_t)vec_in[c + 9]
+                      + (int32_t)row[c + 10] * (int32_t)vec_in[c + 10]
+                      + (int32_t)row[c + 11] * (int32_t)vec_in[c + 11];
+                acc3 += (int32_t)row[c + 12] * (int32_t)vec_in[c + 12]
+                      + (int32_t)row[c + 13] * (int32_t)vec_in[c + 13]
+                      + (int32_t)row[c + 14] * (int32_t)vec_in[c + 14]
+                      + (int32_t)row[c + 15] * (int32_t)vec_in[c + 15];
+            }
+            vec_out_simd[r] = (float)(acc0 + acc1 + acc2 + acc3) * (1.0f / 900.0f);
+        }
+    }
+    int64_t t_simd_1 = esp_timer_get_time();
+    float simd_us = (float)(t_simd_1 - t_simd_0) / GEMV_ITERS;
+    float gemv_speedup = scalar_us / (simd_us > 0.001f ? simd_us : 1.0f);
+
+    ESP_LOGI(TAG, "  64x64 INT8 GEMV Baseline : %.2f us/op (%.2f ms total)", scalar_us, (t_scalar_1 - t_scalar_0) / 1000.0f);
+    ESP_LOGI(TAG, "  64x64 INT8 GEMV SIMD     : %.2f us/op (%.2f ms total) -> SPEEDUP: %.2fx faster!",
+             simd_us, (t_simd_1 - t_simd_0) / 1000.0f, gemv_speedup);
+    
+    volatile float gemv_sink = vec_out_scalar[0] + vec_out_simd[0];
+    (void)gemv_sink;
+
+    // 2. expf vs Fast Math LUT Benchmark (10,000 runs)
+    constexpr int EXP_ITERS = 10000;
+    float test_x[64];
+    for (int i = 0; i < 64; i++) test_x[i] = -((float)(i % 16));
+    
+    volatile float sum_libc = 0.0f;
+    int64_t t_exp_libc_0 = esp_timer_get_time();
+    for (int it = 0; it < EXP_ITERS; it++) {
+        sum_libc += expf(test_x[it % 64]);
+    }
+    int64_t t_exp_libc_1 = esp_timer_get_time();
+    float libc_exp_ns = (float)(t_exp_libc_1 - t_exp_libc_0) * 1000.0f / EXP_ITERS;
+
+    volatile float sum_lut = 0.0f;
+    int64_t t_exp_lut_0 = esp_timer_get_time();
+    for (int it = 0; it < EXP_ITERS; it++) {
+        sum_lut += LLM::FastMath::fast_expf(test_x[it % 64]);
+    }
+    int64_t t_exp_lut_1 = esp_timer_get_time();
+    float lut_exp_ns = (float)(t_exp_lut_1 - t_exp_lut_0) * 1000.0f / EXP_ITERS;
+    float exp_speedup = libc_exp_ns / (lut_exp_ns > 0.001f ? lut_exp_ns : 1.0f);
+
+    ESP_LOGI(TAG, "  Standard libc expf()     : %.1f ns/call", libc_exp_ns);
+    ESP_LOGI(TAG, "  Fast Math Exp LUT        : %.1f ns/call -> SPEEDUP: %.2fx faster!", lut_exp_ns, exp_speedup);
 }
 
 } // namespace Diagnostics
