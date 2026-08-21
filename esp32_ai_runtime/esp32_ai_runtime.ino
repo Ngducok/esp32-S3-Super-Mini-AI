@@ -28,60 +28,54 @@ WebServer server(80);
 // Model Weights & Web UI Header
 // ----------------------------------------------------------------------------
 #include "../firmware/main/llm/model_llm_weights.h"
+#include "../firmware/main/llm/fast_math.h"
+#include "../firmware/main/llm/simd_ops.h"
 #include "../web/web_ui.h"
 
 // ----------------------------------------------------------------------------
-// SRAM-Allocated KV-Cache (3 layers x 64 pos x 64 dim = 24.5 KB total for K + V)
+// SRAM-Allocated Ring-Buffer KV-Cache (3 layers x 64 pos x 64 dim = 24.5 KB total in SRAM)
 // ----------------------------------------------------------------------------
 static int8_t s_k_cache[LLM::Weights::LAYERS][LLM::Weights::MAX_SEQ_LEN][LLM::Weights::DIM];
 static int8_t s_v_cache[LLM::Weights::LAYERS][LLM::Weights::MAX_SEQ_LEN][LLM::Weights::DIM];
 
-static inline float gelu_act(float x) {
-    return 0.5f * x * (1.0f + tanhf(0.79788456f * (x + 0.044715f * x * x * x)));
-}
-
-static inline void softmax_arr(float* vec, uint32_t size) {
-    float max_v = vec[0];
-    for (uint32_t i = 1; i < size; i++) if (vec[i] > max_v) max_v = vec[i];
-    float sum_exp = 0.0f;
-    for (uint32_t i = 0; i < size; i++) {
-        float e = expf(vec[i] - max_v);
-        vec[i] = e;
-        sum_exp += e;
+static inline void float_to_int8(const float* in, int8_t* out, uint32_t size, float scale = 30.0f) {
+    uint32_t i = 0;
+    for (; i + 4 <= size; i += 4) {
+        int32_t v0 = (int32_t)roundf(in[i + 0] * scale);
+        int32_t v1 = (int32_t)roundf(in[i + 1] * scale);
+        int32_t v2 = (int32_t)roundf(in[i + 2] * scale);
+        int32_t v3 = (int32_t)roundf(in[i + 3] * scale);
+        if (v0 < -128) { v0 = -128; } else if (v0 > 127) { v0 = 127; }
+        if (v1 < -128) { v1 = -128; } else if (v1 > 127) { v1 = 127; }
+        if (v2 < -128) { v2 = -128; } else if (v2 > 127) { v2 = 127; }
+        if (v3 < -128) { v3 = -128; } else if (v3 > 127) { v3 = 127; }
+        out[i + 0] = (int8_t)v0;
+        out[i + 1] = (int8_t)v1;
+        out[i + 2] = (int8_t)v2;
+        out[i + 3] = (int8_t)v3;
     }
-    float inv_sum = 1.0f / (sum_exp > 1e-7f ? sum_exp : 1.0f);
-    for (uint32_t i = 0; i < size; i++) vec[i] *= inv_sum;
-}
-
-static void matvec_int8(const int8_t* mat, const int8_t* vec_in, float* vec_out, uint32_t rows, uint32_t cols) {
-    for (uint32_t r = 0; r < rows; r++) {
-        int32_t acc = 0;
-        const int8_t* row = &mat[r * cols];
-        for (uint32_t c = 0; c < cols; c++) {
-            acc += (int32_t)row[c] * (int32_t)vec_in[c];
-        }
-        vec_out[r] = (float)acc * (1.0f / 900.0f);
-    }
-}
-
-static void float_to_int8(const float* in, int8_t* out, uint32_t size, float scale = 30.0f) {
-    for (uint32_t i = 0; i < size; i++) {
+    for (; i < size; i++) {
         int32_t val = (int32_t)roundf(in[i] * scale);
-        if (val < -128) val = -128;
-        if (val > 127)  val = 127;
+        if (val < -128) { val = -128; } else if (val > 127) { val = 127; }
         out[i] = (int8_t)val;
     }
 }
 
 void forwardToken(uint8_t token_id, uint32_t pos, float* out_logits) {
-    uint32_t eff_pos = pos % LLM::Weights::MAX_SEQ_LEN;
+    // 1. Sliding Window Ring-Buffer slot assignment
+    uint32_t ring_slot = pos % LLM::Weights::MAX_SEQ_LEN;
+    uint32_t window_len = (pos < LLM::Weights::MAX_SEQ_LEN) ? (pos + 1) : LLM::Weights::MAX_SEQ_LEN;
+
+    // 2. Relative Positional Embedding lookup
+    uint32_t wpe_pos = (pos < LLM::Weights::MAX_SEQ_LEN) ? pos : (LLM::Weights::MAX_SEQ_LEN - 1);
     float x[LLM::Weights::DIM];
     const int8_t* wte_row = &LLM::Weights::WTE[token_id * LLM::Weights::DIM];
-    const int8_t* wpe_row = &LLM::Weights::WPE[eff_pos * LLM::Weights::DIM];
+    const int8_t* wpe_row = &LLM::Weights::WPE[wpe_pos * LLM::Weights::DIM];
     for (uint32_t i = 0; i < LLM::Weights::DIM; i++) {
         x[i] = ((float)wte_row[i] + (float)wpe_row[i]) * (1.0f / 30.0f);
     }
 
+    // 3. Transformer Decoder Layers
     for (uint32_t l = 0; l < LLM::Weights::LAYERS; l++) {
         int8_t x_q[LLM::Weights::DIM];
         float_to_int8(x, x_q, LLM::Weights::DIM);
@@ -94,37 +88,37 @@ void forwardToken(uint8_t token_id, uint32_t pos, float* out_logits) {
         const int8_t* w2 = (l == 0) ? LLM::Weights::W2_L0 : ((l == 1) ? LLM::Weights::W2_L1 : LLM::Weights::W2_L2);
 
         float q[LLM::Weights::DIM]; float k[LLM::Weights::DIM]; float v[LLM::Weights::DIM];
-        matvec_int8(wq, x_q, q, LLM::Weights::DIM, LLM::Weights::DIM);
-        matvec_int8(wk, x_q, k, LLM::Weights::DIM, LLM::Weights::DIM);
-        matvec_int8(wv, x_q, v, LLM::Weights::DIM, LLM::Weights::DIM);
+        LLM::SIMD::matvec_int8(wq, x_q, q, LLM::Weights::DIM, LLM::Weights::DIM);
+        LLM::SIMD::matvec_int8(wk, x_q, k, LLM::Weights::DIM, LLM::Weights::DIM);
+        LLM::SIMD::matvec_int8(wv, x_q, v, LLM::Weights::DIM, LLM::Weights::DIM);
 
-        float_to_int8(k, s_k_cache[l][eff_pos], LLM::Weights::DIM);
-        float_to_int8(v, s_v_cache[l][eff_pos], LLM::Weights::DIM);
+        float_to_int8(k, s_k_cache[l][ring_slot], LLM::Weights::DIM);
+        float_to_int8(v, s_v_cache[l][ring_slot], LLM::Weights::DIM);
 
-        uint32_t current_len = eff_pos + 1;
-
-        // Full Multi-Head Self-Attention
+        // Full Multi-Head Self-Attention across Sliding Window
         float attn_out[LLM::Weights::DIM] = {0.0f};
         float scores[LLM::Weights::MAX_SEQ_LEN];
 
         for (uint32_t h = 0; h < LLM::Weights::HEADS; h++) {
             uint32_t h_start = h * LLM::Weights::HEAD_DIM;
 
-            for (uint32_t t = 0; t < current_len; t++) {
+            for (uint32_t t = 0; t < window_len; t++) {
+                uint32_t slot = (pos < LLM::Weights::MAX_SEQ_LEN) ? t : ((pos - window_len + 1 + t) % LLM::Weights::MAX_SEQ_LEN);
                 float dot = 0.0f;
-                const int8_t* k_cached = &s_k_cache[l][t][h_start];
+                const int8_t* k_cached = &s_k_cache[l][slot][h_start];
                 for (uint32_t d = 0; d < LLM::Weights::HEAD_DIM; d++) {
                     dot += q[h_start + d] * ((float)k_cached[d] * (1.0f / 30.0f));
                 }
                 scores[t] = dot * 0.25f; // 1 / sqrt(16)
             }
 
-            softmax_arr(scores, current_len);
+            LLM::FastMath::fast_softmax(scores, window_len);
 
             for (uint32_t d = 0; d < LLM::Weights::HEAD_DIM; d++) {
                 float val_acc = 0.0f;
-                for (uint32_t t = 0; t < current_len; t++) {
-                    val_acc += scores[t] * ((float)s_v_cache[l][t][h_start + d] * (1.0f / 30.0f));
+                for (uint32_t t = 0; t < window_len; t++) {
+                    uint32_t slot = (pos < LLM::Weights::MAX_SEQ_LEN) ? t : ((pos - window_len + 1 + t) % LLM::Weights::MAX_SEQ_LEN);
+                    val_acc += scores[t] * ((float)s_v_cache[l][slot][h_start + d] * (1.0f / 30.0f));
                 }
                 attn_out[h_start + d] = val_acc;
             }
@@ -134,25 +128,25 @@ void forwardToken(uint8_t token_id, uint32_t pos, float* out_logits) {
         int8_t attn_q[LLM::Weights::DIM];
         float_to_int8(attn_out, attn_q, LLM::Weights::DIM);
         float proj_out[LLM::Weights::DIM];
-        matvec_int8(wo, attn_q, proj_out, LLM::Weights::DIM, LLM::Weights::DIM);
+        LLM::SIMD::matvec_int8(wo, attn_q, proj_out, LLM::Weights::DIM, LLM::Weights::DIM);
         for (uint32_t i = 0; i < LLM::Weights::DIM; i++) x[i] += proj_out[i];
 
         // MLP FFN
         float_to_int8(x, x_q, LLM::Weights::DIM);
         float ffn_h[LLM::Weights::FFN_DIM];
-        matvec_int8(w1, x_q, ffn_h, LLM::Weights::FFN_DIM, LLM::Weights::DIM);
-        for (uint32_t i = 0; i < LLM::Weights::FFN_DIM; i++) ffn_h[i] = gelu_act(ffn_h[i]);
+        LLM::SIMD::matvec_int8(w1, x_q, ffn_h, LLM::Weights::FFN_DIM, LLM::Weights::DIM);
+        for (uint32_t i = 0; i < LLM::Weights::FFN_DIM; i++) ffn_h[i] = LLM::FastMath::fast_gelu(ffn_h[i]);
 
         int8_t ffn_q[LLM::Weights::FFN_DIM];
         float_to_int8(ffn_h, ffn_q, LLM::Weights::FFN_DIM);
         float ffn_down[LLM::Weights::DIM];
-        matvec_int8(w2, ffn_q, ffn_down, LLM::Weights::DIM, LLM::Weights::FFN_DIM);
+        LLM::SIMD::matvec_int8(w2, ffn_q, ffn_down, LLM::Weights::DIM, LLM::Weights::FFN_DIM);
         for (uint32_t i = 0; i < LLM::Weights::DIM; i++) x[i] += ffn_down[i];
     }
 
     int8_t final_x_q[LLM::Weights::DIM];
     float_to_int8(x, final_x_q, LLM::Weights::DIM);
-    matvec_int8(LLM::Weights::LM_HEAD, final_x_q, out_logits, LLM::Weights::VOCAB_SIZE, LLM::Weights::DIM);
+    LLM::SIMD::matvec_int8(LLM::Weights::LM_HEAD, final_x_q, out_logits, LLM::Weights::VOCAB_SIZE, LLM::Weights::DIM);
 }
 
 static uint32_t tokenizeInput(const char* text, uint8_t* out_tokens, uint32_t max_tokens) {
@@ -243,7 +237,7 @@ void handleChatAPI() {
     uint32_t tokens_gen = 0;
     uint8_t recent[8] = {0};
 
-    while (tokens_gen < 48 && cur_pos < LLM::Weights::MAX_SEQ_LEN) {
+    while (tokens_gen < 48) {
         for (uint32_t r = 0; r < 8; r++) {
             if (recent[r] > 0 && recent[r] < LLM::Weights::VOCAB_SIZE) {
                 logits[recent[r]] -= 1.2f;

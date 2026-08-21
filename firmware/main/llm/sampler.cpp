@@ -1,4 +1,5 @@
 #include "sampler.h"
+#include "fast_math.h"
 #include "esp_random.h"
 #include <math.h>
 #include <string.h>
@@ -22,7 +23,7 @@ uint8_t Sampler::sample(float* logits, uint32_t vocab_size, float temperature, f
         return best_idx;
     }
 
-    // 1. Softmax with Temperature
+    // 1. High-Speed Softmax with Temperature using FastMath LUT
     float inv_temp = 1.0f / temperature;
     float max_logit = best_val;
     float exp_sum = 0.0f;
@@ -30,8 +31,7 @@ uint8_t Sampler::sample(float* logits, uint32_t vocab_size, float temperature, f
 
     for (uint32_t i = 0; i < vocab_size; i++) {
         float scaled = (logits[i] - max_logit) * inv_temp;
-        if (scaled < -10.0f) scaled = -10.0f;
-        probs[i] = expf(scaled);
+        probs[i] = FastMath::fast_expf(scaled);
         exp_sum += probs[i];
     }
 

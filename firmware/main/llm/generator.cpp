@@ -82,12 +82,12 @@ GenerationStats Generator::generateStream(const char* prompt,
         Transformer::forwardToken(prompt_tokens[i], cur_pos++, logits);
     }
 
-    // 3. Autoregressive Decode Loop (Logits -> Sampler -> Token -> Next Step)
+    // 3. Autoregressive Decode Loop (Sliding Window Continuous Generation)
     uint32_t tokens_gen = 0;
     uint8_t recent_tokens[8] = {0};
     uint32_t recent_idx = 0;
 
-    while (tokens_gen < max_new_tokens && cur_pos < Weights::MAX_SEQ_LEN) {
+    while (tokens_gen < max_new_tokens) {
         // Apply lightweight repetition penalty on recently generated tokens
         for (uint32_t r = 0; r < 8; r++) {
             if (recent_tokens[r] > 0 && recent_tokens[r] < Weights::VOCAB_SIZE) {
