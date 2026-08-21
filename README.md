@@ -133,6 +133,8 @@ esp32/
 ├── LICENSE                       # MIT Open Source License
 ├── README.md                     # Technical Documentation (English)
 ├── README_VN.md                  # Technical Documentation (Vietnamese)
+├── CAPABILITIES_AND_LIMITATIONS.md # Supported Scope & Boundaries (English)
+├── CAPABILITIES_AND_LIMITATIONS_VN.md # Supported Scope & Boundaries (Vietnamese)
 ├── results.md                    # Empirical Test Report (English)
 ├── results_VN.md                 # Empirical Test Report (Vietnamese)
 │

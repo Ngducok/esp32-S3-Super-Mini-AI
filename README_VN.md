@@ -133,6 +133,8 @@ esp32/
 ├── LICENSE                       # Giấy phép nguồn mở MIT
 ├── README.md                     # Tài liệu kỹ thuật tiếng Anh (Chuẩn kỹ thuật)
 ├── README_VN.md                  # Tài liệu kỹ thuật tiếng Việt (Chuẩn kỹ thuật)
+├── CAPABILITIES_AND_LIMITATIONS.md # Báo cáo năng lực & Giới hạn (Tiếng Anh)
+├── CAPABILITIES_AND_LIMITATIONS_VN.md # Báo cáo năng lực & Giới hạn (Tiếng Việt)
 ├── results.md                    # Báo cáo thực nghiệm tiếng Anh
 ├── results_VN.md                 # Báo cáo thực nghiệm tiếng Việt
 │
