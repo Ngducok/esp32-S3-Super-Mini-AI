@@ -1,4 +1,4 @@
-# Hướng Dẫn Triển Khai Trên Arduino IDE
+# Môi Trường Triển Khai Độc Lập Arduino IDE (esp32_ai_runtime/)
 
 <p align="left">
   <b>Ngôn ngữ:</b> 
@@ -8,59 +8,31 @@
 
 ---
 
-## Tổng Quan
+## 1. Tổng Quan
 
-Thư mục `esp32_ai_runtime/` cung cấp một sketch Arduino hoàn chỉnh trong một file duy nhất (`esp32_ai_runtime.ino`) dành cho cộng đồng Maker, học sinh, sinh viên và lập trình viên muốn thử nghiệm nhanh trên Arduino IDE mà không cần cài đặt môi trường ESP-IDF.
+Thư mục `esp32_ai_runtime/` cung cấp bản phát hành một file duy nhất (`esp32_ai_runtime.ino`) dành cho các nhà phát triển sử dụng nền tảng Arduino IDE.
 
 ---
 
-## Bài Toán Kỹ Thuật & Giải Pháp
+## 2. Bài Toán Đặt Ra & Cách Xử Lý
 
 ### Bài toán
-Cài đặt và thiết lập môi trường ESP-IDF đòi hỏi cấu hình Python venv, CMake và dòng lệnh, gây khó khăn cho người mới bắt đầu hoặc những người quen thuộc với hệ sinh thái Arduino.
+Quá trình cài đặt ESP-IDF với chuỗi công cụ CMake và Python phức tạp đối với người dùng phổ thông hoặc môi trường giảng dạy.
 
-### Giải pháp
-Toàn bộ hệ thống (trình điều khiển WiFi SoftAP, WebServer, lõi Transformer Decoder INT8, KV-cache tĩnh và các endpoint REST) được hợp nhất thành một sketch `.ino` duy nhất:
-1. Sử dụng thư viện `WebServer` tiêu chuẩn của Arduino.
-2. Include trực tiếp các file trọng số `model_llm_weights.h` và `web_ui.h` từ firmware.
-3. Vận hành vòng lặp suy luận AI bên trong hàm `loop()` quen thuộc của Arduino.
-
----
-
-## Lưu Đồ Vận Hành Trên Arduino IDE (Flowchart)
-
-```
-                 [Khởi Tạo Hàm setup() Của Arduino]
-                                │
-                 ├── Khởi động Serial.begin(115200)
-                 ├── Phát WiFi: WiFi.softAP("ESP32-Local-AI", "12345678")
-                 ├── Đăng ký: server.on("/", handleRoot)
-                 ├── Đăng ký: server.on("/api/status", handleStatus)
-                 ├── Đăng ký: server.on("/api/chat", handleChatAPI)
-                 └── Kích hoạt máy chủ: server.begin()
-                                │
-                                ▼
-                 [Vòng Lặp loop() Thực Thi Liên Tục]
-                                │
-            ┌───────────────────┴───────────────────┐
-            ▼                                       ▼
- [server.handleClient()]                  [Serial.available()]
-   ├── Lắng nghe HTTP request               ├── Đọc prompt từ Serial
-   ├── Gọi hàm forwardToken()               ├── Stream từng token ra màn hình
-   └── Gửi JSON về trình duyệt              └── In kết quả đo lường hiệu năng
-```
+### Cách xử lý
+Toàn bộ hệ thống (lõi Transformer Decoder, SIMD GEMV, Fast Math LUT, Sliding Window KV-Cache, WiFi SoftAP và Web Server) được tích hợp trong file `esp32_ai_runtime.ino`:
+1. Sử dụng thư viện `WebServer` chuẩn của Arduino để phục vụ giao diện chat.
+2. Tích hợp trực tiếp các kernel tối ưu hóa vi kiến trúc từ `simd_ops.h` và `fast_math.h`.
+3. Quản lý vòng lặp sinh tự hồi quy trong hàm `loop()` của Arduino.
 
 ---
 
-## Cấu Hình Arduino IDE & Hướng Dẫn Nạp
+## 3. Cấu Hình Biên Dịch Trong Arduino IDE
 
-1. Cài đặt gói bo mạch **ESP32 by Espressif Systems** trong Boards Manager của Arduino IDE.
-2. Mở file `esp32_ai_runtime.ino`.
-3. Trong menu **Tools > Board**, chọn **ESP32S3 Dev Module**.
-4. Thiết lập các mục sau trong menu Tools:
-   - **Flash Size**: 4MB (32Mb)
+1. Chọn Board: **ESP32S3 Dev Module**.
+2. Thiết lập cấu hình:
+   - **Flash Size**: 4MB
    - **Partition Scheme**: Huge APP (3MB No OTA / 1MB SPIFFS)
-   - **USB Mode**: Hardware CDC and JTAG
-   - **Upload Mode**: UART0 / Hardware CDC
    - **PSRAM**: Disabled
-5. Nhấn nút **Upload** và mở Serial Monitor ở tốc độ Baud `115200`.
+   - **CPU Frequency**: 240MHz
+3. Nhấn **Upload** để nạp firmware.

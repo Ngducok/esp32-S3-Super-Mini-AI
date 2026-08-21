@@ -1,4 +1,4 @@
-# Arduino IDE Standalone Deployment
+# Arduino IDE Standalone Deployment (esp32_ai_runtime/)
 
 <p align="left">
   <b>Language:</b> 
@@ -8,59 +8,31 @@
 
 ---
 
-## Overview
+## 1. Overview
 
-The `esp32_ai_runtime/` directory provides a self-contained, single-file Arduino sketch (`esp32_ai_runtime.ino`) for developers and makers who prefer using the Arduino IDE over the ESP-IDF toolchain.
+The `esp32_ai_runtime/` directory provides a self-contained, single-file Arduino sketch (`esp32_ai_runtime.ino`) for developers who prefer the Arduino IDE over the ESP-IDF toolchain.
 
 ---
 
-## Architectural Problem & Solution
+## 2. Problem Statement & Technical Solution
 
 ### Problem
-Building an advanced ESP-IDF project requires configuring Python virtual environments, CMake build systems, and Ninja compilers, which presents a steep learning curve for hobbyists and educational environments.
+Setting up ESP-IDF toolchains with CMake and Python environments presents a high barrier to entry for rapid prototyping and education.
 
 ### Solution
-The entire runtime (SoftAP WiFi driver, WebServer, INT8 Micro-Transformer decoder, static KV-cache, and REST endpoints) is consolidated into an Arduino-compatible `.ino` sketch:
-1. Replaces the ESP-IDF HTTP server with the standard Arduino `WebServer` library.
-2. Direct-includes `model_llm_weights.h` and `web_ui.h` from the repository root.
-3. Automatically manages the autoregressive token generation loop inside the standard Arduino `loop()` function.
+The entire generative pipeline (Transformer Decoder, SIMD GEMV, Fast Math LUTs, Sliding Window KV-cache, SoftAP WiFi, and Web Server) is consolidated into `esp32_ai_runtime.ino`:
+1. Utilizes the standard Arduino `WebServer` library to host the chat UI.
+2. Integrates hardware-level micro-architecture optimizations (`simd_ops.h`, `fast_math.h`).
+3. Executes autoregressive generation continuously inside Arduino's `loop()` routine.
 
 ---
 
-## Arduino Runtime Execution Flowchart
+## 3. Arduino IDE Flashing Guide
 
-```
-                 [Arduino setup() Initialization]
-                                │
-                 ├── Serial.begin(115200)
-                 ├── WiFi.softAP("ESP32-Local-AI", "12345678")
-                 ├── server.on("/", handleRoot)
-                 ├── server.on("/api/status", handleStatus)
-                 ├── server.on("/api/chat", handleChatAPI)
-                 └── server.begin()
-                                │
-                                ▼
-                 [Arduino loop() Execution Cycle]
-                                │
-            ┌───────────────────┴───────────────────┐
-            ▼                                       ▼
- [server.handleClient()]                  [Serial.available()]
-   ├── Handle HTTP requests                 ├── Read incoming prompt
-   ├── Execute forwardToken()               ├── Stream token-by-token
-   └── Send JSON reply                      └── Print inference metrics
-```
-
----
-
-## Arduino IDE Configuration & Flashing
-
-1. Install the **ESP32 by Espressif Systems** board package in the Arduino IDE Boards Manager.
-2. Open `esp32_ai_runtime.ino`.
-3. In **Tools > Board**, select **ESP32S3 Dev Module**.
-4. Configure the following menu options:
-   - **Flash Size**: 4MB (32Mb)
+1. Select Board: **ESP32S3 Dev Module**.
+2. Configure parameters:
+   - **Flash Size**: 4MB
    - **Partition Scheme**: Huge APP (3MB No OTA / 1MB SPIFFS)
-   - **USB Mode**: Hardware CDC and JTAG
-   - **Upload Mode**: UART0 / Hardware CDC
    - **PSRAM**: Disabled
-5. Click **Upload** and open the Serial Monitor at `115200` baud.
+   - **CPU Frequency**: 240MHz
+3. Click **Upload**.
