@@ -18,6 +18,8 @@ The system features an **INT8-quantized Transformer Decoder**, an independent **
 
 ## 2. Experimental Benchmarks & Performance Metrics
 
+For complete MLPerf Tiny evaluation methodology, breakdown charts, and reproducibility scripts, refer to the [benchmark/BENCHMARK.md](benchmark/BENCHMARK.md) report.
+
 The table below presents verified performance metrics obtained from direct silicon execution:
 
 | Metric | Measured Value | Technical Context |

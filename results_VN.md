@@ -18,6 +18,8 @@ Hệ thống tích hợp mô hình **Transformer Decoder lượng tử hóa INT8
 
 ## 2. Thống Kê Đo Đạc Thực Nghiệm
 
+Xem báo cáo đo đạc toàn diện theo chuẩn MLPerf Tiny, biểu đồ phân tích và công cụ tái lập tại [benchmark/BENCHMARK_VN.md](benchmark/BENCHMARK_VN.md).
+
 Bảng dưới đây trình bày các chỉ số đo đạc thực tế từ quá trình vận hành trực tiếp trên chip silicon ESP32-S3:
 
 | Chỉ số đo đạc | Giá trị thực nghiệm | Ý nghĩa kỹ thuật |

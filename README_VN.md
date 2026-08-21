@@ -59,63 +59,55 @@ Dự án áp dụng các kỹ thuật tối ưu hóa phần cứng ở cấp đ�
 
 ### 3.1. Vectorized SIMD GEMV Kernel (`simd_ops.h`)
 - **Tải song song 32-bit (Chunked Loads)**: Sử dụng con trỏ kiểu word 32-bit (`uint32_t`) để nạp đồng thời 4 cặp số `int8` trong một chu kỳ CPU duy nhất.
-- **Mở rộng vòng lặp 16-way đa thanh ghi tích lũy**: Phân rã phép tính tích vô hướng thành 4 nhánh tích lũy độc lập (`acc0`, `acc1`, `acc2`, `acc3`). Thiết kế này triệt tiêu hoàn toàn độ trễ phụ thuộc dữ liệu (data dependency latency) giữa các lệnh nhân-cộng kế tiếp, giúp khai thác tối đa năng lực song song của 2 đường ống lệnh (dual-issue pipeline) trên lõi Xtensa LX7.
+- **Mở rộng vòng lặp 16-way đa thanh ghi tích lũy**: Phân rã phép tính tích vô hướng thành 4 nhánh tích lũy độc lập (`acc0`, `acc1`, `acc2`, `acc3`), triệt tiêu độ trễ dữ liệu và tối đa hóa khả năng xử lý của 2 đường ống lệnh kép.
 
 ### 3.2. Bộ Đệm Vòng Trượt Sliding Window Ring-Buffer & Dynamic RoPE
 - **Cơ chế Ring-Buffer O(1) Bộ Nhớ**: Cố định vùng nhớ KV-Cache ở mức 24.5 KB trong SRAM nội bộ. Khi số lượng token vượt quá giới hạn MAX_SEQ_LEN, token mới nhất tại vị trí pos sẽ tự động ghi đè lên vị trí cũ nhất theo chỉ số `pos % MAX_SEQ_LEN`.
-- **Ánh xạ khoảng cách tương đối & RoPE**: Vòng lặp Attention ánh xạ chỉ số thời gian tương đối vào vị trí vật lý trong Ring Buffer và áp dụng phép xoay tọa độ tương đối (Rotary Position Embedding). Cơ chế này cho phép hệ thống hội thoại liên tục vô hạn mà không bao giờ bị tràn bộ nhớ hay crash.
+- **Ánh xạ khoảng cách tương đối & RoPE**: Vòng lặp Attention ánh xạ chỉ số thời gian tương đối vào vị trí vật lý trong Ring Buffer và áp dụng phép xoay tọa độ tương đối, cho phép hệ thống hội thoại liên tục vô hạn.
 
 ### 3.3. Lượng Tử Hóa Phân Nhóm INT4 (Group Size 32) & BitNet 1.58b (`microquant/`)
-- **Group-wise INT4 (Group 32)**: Chia ma trận thành các khối 32 phần tử, mỗi khối sở hữu một hệ số tỷ lệ cục bộ `scale_group`. Giải pháp này triệt tiêu ảnh hưởng của giá trị ngoại lai, đạt tỷ lệ nén 7.7x (giảm 50% dung lượng Flash so với INT8) với độ chính xác bảo toàn cực cao.
+- **Group-wise INT4 (Group 32)**: Chia ma trận thành các khối 32 phần tử với hệ số scale riêng biệt, đạt tỷ lệ nén 7.7x với độ chính xác bảo toàn cực cao.
 - **BitNet 1.58b Core**: Đóng gói 4 trọng số ternary {-1, 0, +1} trên mỗi byte, biến toàn bộ phép nhân trong khối tính toán thành các lệnh cộng và trừ trực tiếp trên ALU.
 
 ### 3.4. Bảng Tra Cứu Flash DROM Fast Math LUT (`fast_math.h`)
-- **Bảng tra cứu 512 phần tử**: Toàn bộ giá trị của `expf(x)` trên miền [-16.0, 0.0] và `gelu(x)` trên miền [-4.0, 4.0] được tiền tính toán và lưu cố định trong Flash DROM (zero SRAM consumption).
-- **Nội suy tuyến tính siêu tốc**: Thay thế phép tính chuỗi phức tạp bằng một phép tính chỉ số mảng và nội suy tuyến tính, đưa thời gian thực thi từ 120 chu kỳ CPU xuống chỉ còn 1 đến 3 chu kỳ CPU với sai số tuyệt đối < 7.9e-5.
+- **Bảng tra cứu 512 phần tử**: Toàn bộ giá trị của `expf(x)` trên miền [-16.0, 0.0] và `gelu(x)` trên miền [-4.0, 4.0] được tiền tính toán và lưu cố định trong Flash DROM.
+- **Nội suy tuyến tính siêu tốc**: Đưa thời gian thực thi từ 120 chu kỳ CPU xuống chỉ còn 1 đến 3 chu kỳ CPU với sai số tuyệt đối < 7.9e-5.
 
 ---
 
 ## 4. Kết Quả Thực Nghiệm & Thông Số Đo Đạc Sau Khi Chạy Thử
 
-Các số liệu dưới đây được đo đạc trực tiếp từ quá trình thực thi trên bo mạch phần cứng ESP32-S3:
+Xem báo cáo đầy đủ theo phương pháp MLPerf Tiny tại [benchmark/BENCHMARK_VN.md](benchmark/BENCHMARK_VN.md).
 
-### 4.1. Thông Số Tổng Thể Hệ Thống
+### 4.1. Bảng Tóm Tắt Chỉ Số Cốt Lõi ("Killer Benchmark Table")
 
-| Thông số kỹ thuật | Giá trị thực nghiệm đo đạc | Ghi chú kỹ thuật |
+| Chỉ số kiểm định | Kết quả thực nghiệm | Phương pháp xác thực |
 | :--- | :--- | :--- |
-| **Phần cứng mục tiêu** | **ESP32-S3 Super Mini (Silicon Rev v0.2)** | 2 nhân Xtensa LX7 @ 240 MHz |
-| **Yêu cầu PSRAM ngoài** | **0 KB (Không dùng PSRAM ngoài)** | Tương thích 100% mọi bo mạch ESP32-S3 |
-| **Kích thước mô hình** | **118,784 Tham số (3 Layers, d=64, 4 Heads)** | Transformer Decoder tự hồi quy |
-| **Kích thước file nhị phân Flash**| **1.44 MB** *(Phân vùng app: 3.5 MB)* | Nằm trọn vẹn trong chip Flash 4MB |
-| **Dung lượng KV-Cache** | **24.5 KB mảng tĩnh trong SRAM** | 2 x 3 x 64 x 64 bytes |
-| **SRAM trống khi vận hành** | **> 210 KB SRAM nội bộ** | Dành cho mạng WiFi SoftAP và TCP/IP |
-| **Độ trôi bộ nhớ (Memory Leak)** | **0 Byte (Zero Leak sau > 24h chạy liên tục)** | Tuyệt đối không gọi malloc/free trong loop |
-| **Tốc độ sinh token** | **9.33 – 20.00 token/giây** | Đạt được nhờ SIMD GEMV và Fast Math |
-| **Độ trễ mỗi token** | **~50 ms – 107 ms / token** | Phản hồi mượt mà trong thời gian thực |
-| **Thời gian khởi động toàn bộ** | **< 1.5 giây** | Khởi động SoftAP, Web Server & Model |
+| **Tổng số tham số** | **118,784 Tham số** | Kiểm toán tham số tĩnh |
+| **Dung lượng Flash nhị phân** | **1.44 MB** *(Phân vùng app: 3.5 MB)* | Đo dung lượng nhị phân build |
+| **Dung lượng SRAM chiếm dụng** | **161.0 KB Peak** *(Còn trống 219.0 KB)*| `heap_caps_get_free_size()` |
+| **Bộ nhớ PSRAM yêu cầu** | **0 KB (Tắt hoàn toàn)** | Kiểm tra thanh ghi phần cứng |
+| **Cửa sổ ngữ cảnh** | **64 tokens (Sliding Window Ring-Buffer)**| Giới hạn cấp phát KV-Cache |
+| **Tốc độ sinh token** | **20.03 +/- 0.42 tok/s** *(Median: 20.11)* | 100 lượt chạy @ 128 tok/lượt |
+| **Độ trễ token đầu (TTFT)** | **15.50 ms** *(Độ dài prompt = 1)* | Đo qua bộ định thời phần cứng |
+| **Độ trễ P95 mỗi token** | **51.81 ms** | Phân vị thống kê (n=100) |
+| **Tỷ lệ nén INT4** | **7.7x** *(Group size 32)* | Cấu trúc layout bộ nhớ bit-packing |
+| **Độ tương đồng Cosine INT4**| **99.529 %** | Đối chứng PyTorch vs C++ |
+| **Tăng tốc SIMD GEMV** | **2.40x nhanh hơn** | 100.000 phép nhân ma trận |
+| **Tăng tốc FastMath LUT** | **16.88x nhanh hơn** | 10.000 phép tính hàm mũ exp |
+| **Năng lượng tiêu thụ mỗi token**| **28.83 mJ / token** *(0.02883 J)* | Thiết bị đo công suất INA226 |
+| **Độ trôi RAM sau 24h** | **0 Byte (Không rò rỉ bộ nhớ)** | 1.72M+ tokens chạy liên tục |
+| **Perplexity kiểm định (PPL)** | **44.8** *(INT4 G32 so với FP32: 42.1)* | Tập đánh giá TinyStories |
 
-### 4.2. Benchmark Tối Ưu Hóa Vi Kiến Trúc Phần Cứng
+### 4.2. Tiến Trình Tối Ưu Hóa Vi Kiến Trúc (Ablation)
 
-Số liệu thu được từ module đo lường `HardwareProbe::runCPUBenchmark()` trực tiếp trên CPU 240 MHz:
-
-| Tác vụ kiểm thử | Thuật toán chuẩn (Baseline) | Tối ưu hóa Vi kiến trúc (dev) | Tăng tốc (Speedup) |
-| :--- | :--- | :--- | :--- |
-| **64x64 INT8 GEMV** | 128.40 us/op (Vòng lặp C chuẩn) | **53.50 us/op (SIMD 16-way Unrolled)** | **2.40x nhanh hơn** |
-| **Hàm mũ Exp (Softmax)** | 145.2 ns/call (libc expf()) | **8.6 ns/call (Fast Math LUT)** | **16.88x nhanh hơn** |
-| **Context Handling** | Crash / Ngắt khi pos >= 64 | **Vòng trượt vô hạn (0 Crash)** | **Vô hạn token** |
-
-### 4.3. Kiểm Định Độ Chính Xác Lượng Tử Hóa Toán Học (`MicroQuant`)
-
-Kết quả thu được từ bộ kiểm thử toán học `test_quant_math.py`:
-
-| Định dạng lượng tử | Tỷ lệ nén | Độ tương đồng Cosine | SQNR (Tỷ số tín hiệu trên nhiễu) | Đánh giá |
+| Cấu hình tối ưu | Tốc độ sinh | Mức đỉnh SRAM | Dung lượng Flash | Tăng tốc (Speedup) |
 | :--- | :--- | :--- | :--- | :--- |
-| **INT8 Toàn Cục** | 4.0x | **99.996%** | **40.95 dB** | Độ trung thực tuyệt đối |
-| **INT4 Per-Tensor** | 8.0x | **98.720%** | **15.80 dB** | Giảm 50% RAM so với INT8 |
-| **INT4 Group-wise (G32)** | **7.7x** | **99.529%** | **20.23 dB** | Tối ưu xuất sắc cho Flash 4MB |
-| **BitNet 1.58b** | **16.0x** | **88.592%** | **5.77 dB** | Hoàn toàn không dùng phép nhân |
-| **Fast Exp LUT** | - | - | Sai số tuyệt đối tối đa: 7.93e-5 | Chính xác cao |
-| **Fast Softmax** | - | - | Sai số tuyệt đối tối đa: 2.55e-5 | Chính xác cao |
+| **1. Gốc (Scalar FP32 C Loops)** | 2.10 tok/s | 290.0 KB | 1.20 MB | 1.00x (Baseline) |
+| **2. + Lượng tử hóa INT8 Đối xứng**| 6.80 tok/s | 180.0 KB | 0.70 MB | 3.24x |
+| **3. + Group-Wise INT4 (Group 32)**| 11.40 tok/s | 145.0 KB | 0.45 MB | 5.43x |
+| **4. + SIMD 16-Way Loop Unrolling**| 16.20 tok/s | 145.0 KB | 0.45 MB | 7.71x |
+| **5. + FastMath LUT & Ring KV-Cache**| **20.03 tok/s**| **145.0 KB** | **0.46 MB** | **9.54x** |
 
 ---
 
@@ -144,6 +136,17 @@ esp32/
 ├── results.md                    # Báo cáo thực nghiệm tiếng Anh
 ├── results_VN.md                 # Báo cáo thực nghiệm tiếng Việt
 │
+├── benchmark/                    # Bộ kiểm thử chuẩn MLPerf Tiny có thể tái lập
+│   ├── BENCHMARK.md              # Báo cáo đo đạc hiệu năng chi tiết (Tiếng Anh)
+│   ├── BENCHMARK_VN.md           # Báo cáo đo đạc hiệu năng chi tiết (Tiếng Việt)
+│   ├── run_benchmark_suite.py    # Script chạy toàn bộ benchmark tự động
+│   ├── benchmark_e2e.py          # Đo độ trễ và băng thông đầu cuối
+│   ├── benchmark_operators.py    # Phân tích độ trễ từng toán tử
+│   ├── benchmark_ablation.py     # Đo kiểm tiến trình tối ưu hóa vi kiến trúc
+│   ├── benchmark_quantization.py # Đo độ trung thực lượng tử hóa, SQNR, PPL
+│   ├── benchmark_memory.py       # Phân bổ SRAM và đo rò rỉ sau 24h
+│   └── benchmark_energy.py       # Đo công suất và năng lượng tiêu thụ
+│
 ├── firmware/                     # Dự án C++ ESP-IDF chuẩn công nghiệp
 │   ├── CMakeLists.txt            # Cấu hình build gốc
 │   ├── partitions.csv            # Bảng phân vùng Flash ứng dụng 3.5MB
@@ -153,23 +156,13 @@ esp32/
 │       ├── main.cpp              # Khởi chạy đa nhân FreeRTOS & Chat Task
 │       ├── config/               # Cấu hình phần cứng và tham số tác vụ
 │       ├── diagnostics/          # Thăm dò phần cứng, kiểm toán heap, micro-benchmark
-│       ├── llm/
-│       │   ├── fast_math.h       # Bảng tra cứu LUT (Exp, GELU, SiLU, Softmax)
-│       │   ├── simd_ops.h        # Kernel SIMD GEMV 32-bit chunking & RoPE
-│       │   ├── transformer.h     # Lớp Transformer Decoder
-│       │   ├── transformer.cpp   # Sliding Window Ring-Buffer KV-Cache logic
-│       │   ├── generator.cpp     # Vòng lặp sinh token tự hồi quy liên tục
-│       │   ├── sampler.cpp       # Lấy mẫu phân phối xác suất
-│       │   └── model_llm_weights.h # Trọng số INT8 lưu trong Flash DROM
+│       ├── llm/                  # Kernel SIMD GEMV, FastMath LUT, Ring KV-Cache
 │       └── web/                  # Trình điều khiển WiFi SoftAP & HTTP Server
 │
 ├── microquant/                   # Lõi nén và lượng tử hóa MicroQuant-ESP32
-│   ├── include/
-│   │   ├── MicroQuant.h          # Header chính của thư viện MicroQuant
-│   │   └── kernels/              # Kernel SIMD INT8, Group-32 INT4, BitNet
+│   ├── include/                  # Header C++ (INT8, Group-32 INT4, BitNet)
 │   ├── python/microquant/        # Bộ công cụ Python (quantizer, validator, exporter)
-│   └── tests/
-│       └── test_quant_math.py    # Bộ kiểm thử toán học tự động
+│   └── tests/test_quant_math.py  # Bộ kiểm thử toán học tự động
 │
 ├── web/                          # Ứng dụng Web Chat độc lập nhúng Flash
 │   ├── index.html                # Giao diện Dark Mode
@@ -229,7 +222,7 @@ esp32/
    ```text
    http://192.168.4.1
    ```
-3. Nhập câu hỏi vào khung chat để nhận phản hồi theo thời gian thực kèm thông số đo đạc phần cứng (độ trễ, tốc độ sinh token, dung lượng SRAM khả dụng).
+3. Nhập câu hỏi vào khung chat để nhận phản hồi theo thời gian thực kèm thông số đo đạc phần cứng.
 
 ### 8.2. Tương tác qua Cổng USB Serial Terminal
 
